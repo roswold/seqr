@@ -4,6 +4,7 @@
 #include<inttypes.h>
 #include<math.h>
 #include<time.h>
+#include<mmsystem.h>
 
 #define SEMITC pow(2,1/12.0)
 #define raisesemi(f,n) (f*pow(SEMITC,(n)))
@@ -36,14 +37,10 @@ typedef struct Msg
 	uint32_t msg,p1,p2;
 } Msg;
 
+Msg seq[4][16];
 int main(int argc,char **argv)
 {
 	
-	// if(argc<2)
-	// {
-		// printf("usage: %s <output filename>\n",*argv);
-		// exit(2);
-	// }
 	
 	atexit(cls);
 	atexit(resetColor);
@@ -63,10 +60,11 @@ int main(int argc,char **argv)
 	int32_t bpm=120;
 	
 	//seq stuff
-	Msg seq[2][16];
+	// Msg seq[2][16];
 	uint32_t y=0;
 	char info[64]={0};
 	uint8_t channel=0;
+	uint32_t patternoffset=0;
 	
 	
 	int16_t *b=malloc(sizeof(int16_t)*samples);
@@ -83,8 +81,8 @@ int main(int argc,char **argv)
 	setColor(CYAN);
 	printf("%21s\n",*argv);
 	setColor(MAGENTA);
-	printf("%21s\n%21s","[Press any key]","----------------");
-	anykey("\n");
+	printf("%21s\n%21s","[Press any key]\n","----------------");
+	// anykey("\n");
 	
 	
 	//update loop
@@ -92,13 +90,15 @@ int main(int argc,char **argv)
 	{
 		if (kbhit()) //minimal update
 		{
-			char k = getkey();
+			
+			char k;
+			if(kbhit())k=getkey();
 			
 			if(k==KEY_ESCAPE)break;
-			if(k==KEY_UP)y=--y%16;
-			if(k==KEY_DOWN)y=++y%16;
-			if(k==KEY_LEFT)channel=(channel-1)%2;
-			if(k==KEY_RIGHT)channel=(channel+1)%2;
+			if(k==KEY_UP)y=(y-patternoffset-1)%16+patternoffset;
+			if(k==KEY_DOWN)y=(y+1-patternoffset)%16+patternoffset;
+			if(k==KEY_LEFT)channel=--channel%4;
+			if(k==KEY_RIGHT)channel=++channel%4;
 			if(k=='Q')exit(7);
 			if(k=='S')
 			{
@@ -118,7 +118,23 @@ int main(int argc,char **argv)
 				sprintf(info,"opened \"seq.dat\"");
 				fclose(f);
 			}
-			if(k=='E')
+			if(k==KEY_SPACE)
+			{
+				HWAVEOUT hWaveOut = 0;
+				WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, samples, samples*2, 2, 16, 0 };
+				waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+				
+				//actually generate samples in b first...
+				WAVEHDR header = { b, samples, 0, 0, 0, 0, 0, 0 };
+				waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+				waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+				waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+				waveOutClose(hWaveOut);
+				
+				// Sleep(samples);
+				
+			}
+			if(k=='R')//export raw data
 			{
 				FILE *f=fopen("audio.dat","wb");
 				if(!f)exit(8);
@@ -127,18 +143,66 @@ int main(int argc,char **argv)
 				// for(int i=0;i<samples;i++)
 					// b[i]=sw(fr,i,samplerate,a);
 				for(int i=0,j=0;i<16;i++)
-					for(int k=0;k<1000;k++)
-						b[j]=(	sw(seq[0][i].msg,j  ,samplerate,seq[0][i].msg?a:0)+
-								tr(seq[1][i].msg,j++,samplerate,seq[1][i].msg?a:0)
-								)/2.0;
+					for(int k=0;k<2000;k++)
+						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
+								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
+								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
+								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
+								)/4.0;
 							
 				
 				fwrite(b,sizeof(int16_t),samples,f);
 				gotoxy(0,0);
-				sprintf(info,"exported \"audio.dat\"");
+				sprintf(info,"wrote raw audio to \"audio.dat\"");
 				fclose(f);
 			}
-			
+			if(k=='E')//export WAV file
+			{
+				//copy header
+				uint8_t hdr[44];
+				FILE *fi=fopen("wavhdr.dat","rb");
+				if(!fi)return 9;
+				fread(hdr,1,44,fi);
+				fclose(fi);
+				
+				//generate, output samples
+				FILE *f=fopen("seqexport.wav","wb");
+				if(!f)exit(8);
+				
+				int samp=0;
+				// for(int i=0;i<samples;i++)
+					// b[i]=sw(fr,i,samplerate,a);
+				for(int i=0,j=0;i<16;i++)
+					for(int k=0;k<2000;k++)
+						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
+								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
+								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
+								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
+								)/4.0;
+							
+				
+				fwrite(hdr,1,44,f);//write WAV header
+				fwrite(b,sizeof(int16_t),samples,f);
+				gotoxy(0,0);
+				sprintf(info,"exported \"seqexport.wav\"");
+				fclose(f);
+			}
+			if(k==KEY_PGUP)
+			{
+				_asm mov ebx, [patternoffset]; i didn't want to alloc a new var
+				_asm sub ebx,01h
+				_asm cmp ebx,00h
+				_asm jl L1
+				patternoffset--;
+				y--;
+L1:
+				_asm nop;L1 needs something to point to
+			}
+			if(k==KEY_PGDOWN)
+			{
+				patternoffset++;
+				y++;
+			}
 			//piano keyboard layout for comp kb
 			if(k>=97 && k<=122)
 			{
@@ -204,7 +268,7 @@ int main(int argc,char **argv)
 			}
 			
 			cls();
-			for(int i=0;i<16;i++)
+			for(int i=patternoffset;i<patternoffset+16;i++)
 			{
 				gotoxy(0,i+1);
 				if(y==i)setBackgroundColor(BLUE);
@@ -227,11 +291,11 @@ int main(int argc,char **argv)
 			setColor(BLUE);
 			printf("Channel:%u",channel);
 			setColor(GREY);
-			printf("\n%12s%12s%12s","_Q_:Quit","_S_:Save","_O_:Open");
-			printf("\n%12s","_E_:Export");
+			printf("\n%-15s%-15s%-15s","_Q_:Quit","_S_:Save","_O_:Open");
+			printf("\n%-15s%-15s%-15s","_E_:Export","_R_:Export Raw","SPACE:Play");
 			setColor(DARKGREY);
 			printf("\n[%s]",info);
 		}
 	}
-	return 0;
+	exit(0);
 }
