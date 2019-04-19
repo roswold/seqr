@@ -124,7 +124,14 @@ int main(int argc,char **argv)
 				WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, samples, samples*2, 2, 16, 0 };
 				waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
 				
-				//actually generate samples in b first...
+				for(int i=0,j=0;i<16;i++)
+					for(int k=0;k<2000;k++)
+						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
+								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
+								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
+								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
+								)/4.0;
+				
 				WAVEHDR header = { b, samples, 0, 0, 0, 0, 0, 0 };
 				waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
 				waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
