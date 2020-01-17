@@ -1,5 +1,5 @@
 CFLAGS=-Wfatal-errors
-LDFLAGS=-lm -lportaudio
+LDFLAGS=-lm -lportaudio -lncurses -pthread -lpthread
 PROG=seqr
 
 all:$(PROG)

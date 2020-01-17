@@ -1,13 +1,31 @@
-#include"rlutil.h"
+#include<ncurses.h>
+#include<pthread.h>
 #include<portaudio.h>
 
-#include<stdlib.h>
 #include<stdio.h>
-#include<inttypes.h>
+#include<stdlib.h>
+#include<stdint.h>
+#include<stdbool.h>
+#include<string.h>
+#include<unistd.h>
 #include<math.h>
 #include<time.h>
-#include<stdbool.h>
 //#include<mmsystem.h>
+
+// Asynchronous keyboard input thread
+pthread_mutex_t mut;
+void*getkey(void*k)
+{
+	int*key=k;
+	while(true)
+	{
+		pthread_mutex_lock(&mut);
+		*key=getchar();
+		pthread_mutex_unlock(&mut);
+		usleep(20000);
+	}
+	return NULL;
+}
 
 // Portaudio callback
 int audio_cb(const void*inp,void*outp,long unsigned fc,
@@ -70,22 +88,30 @@ typedef struct Msg
 Msg seq[4][16];
 int main(int argc,char **argv)
 {
+	pthread_t getkeythread;
+	int key=-1;
 
 	int32_t audio_data[512];
 	PaStream*pa;
 
-	// Portaudio setup
-	Pa_Initialize();
+	// ncurses setup
+	initscr();
+	start_color();
 
-	// rlutil setup
-	atexit(cls);
-	atexit(resetColor);
-	atexit(showcursor);
-	hidecursor();
-	saveDefaultColor();
-	setConsoleTitle(*argv);
+	// ncurses colors
+	enum{C_CYAN=1,C_GREEN,C_YELLOW,C_WHITE,C_MAGENTA,C_BLUE,C_HILITE};
+	init_pair(1,COLOR_CYAN,COLOR_BLACK);
+	init_pair(2,COLOR_GREEN,COLOR_BLACK);
+	init_pair(3,COLOR_YELLOW,COLOR_BLACK);
+	init_pair(4,COLOR_WHITE,COLOR_BLACK);
+	init_pair(5,COLOR_MAGENTA,COLOR_BLACK);
+	init_pair(6,COLOR_BLUE,COLOR_BLACK);
+	init_pair(7,COLOR_BLACK,COLOR_WHITE);
 
-	// Synth stuff
+	// Pthread setup for async key input
+	pthread_create(&getkeythread,NULL,getkey,&key);
+
+	// seqr synth stuff
 	srand(time(NULL));
 	uint32_t samplerate=44100;
 	uint32_t samples=samplerate;
@@ -104,56 +130,50 @@ int main(int argc,char **argv)
 	int16_t *b=malloc(sizeof(int16_t)*samples);
 	if(!b)
 	{
-		gotoxy(1,1);
-		anykey("failed to load buffer\n");
+		//gotoxy(1,1);
+		mvprintw(1,1,"failed to load buffer\n");
 		exit(1);
 	}
 
-	// Display message until keypress
-	cls();
-	gotoxy(0,0);
-	setColor(CYAN);
-	printf("%21s\n",*argv);
-	setColor(MAGENTA);
-	printf("%21s\n%21s","[Press any key]\n","----------------");
-	// anykey("\n");
+	// Portaudio setup
+	Pa_Initialize();
+	Pa_OpenDefaultStream(&pa,0,2,paInt16,44100,44100/4,
+		(PaStreamCallback*)audio_cb,b);
 
 	// Tracker screen
 	while(true)
 	{
-		// Check for keyboard input
-		if (kbhit())
-		{
-			char k;
-			if(kbhit())k=getkey();
 
-			if(k==KEY_ESCAPE)break;
-			if(k==KEY_UP||k=='k')y=(y-patternoffset-1)%16+patternoffset;
-			if(k==KEY_DOWN||k=='j')y=(y+1-patternoffset)%16+patternoffset;
-			if(k==KEY_LEFT||k=='h')channel=--channel%4;
-			if(k==KEY_RIGHT||k=='l')channel=++channel%4;
-			if(k=='Q')exit(7);
-			if(k=='S')
+		// Check for keyboard input
+		if(key>0)
+		{
+			if(key=='Q')break;
+			if(key==KEY_UP||key=='k')y=(y-patternoffset-1)%16+patternoffset;
+			if(key==KEY_DOWN||key=='j')y=(y+1-patternoffset)%16+patternoffset;
+			if(key==KEY_LEFT||key=='h')channel=--channel%4;
+			if(key==KEY_RIGHT||key=='l')channel=++channel%4;
+			if(key=='Q')exit(7);
+			if(key=='W')
 			{
 				FILE *f=fopen("seq.dat","wb");
 				if(!f)exit(7);
 				fwrite(seq,1,sizeof(seq),f);
-				gotoxy(0,0);
-				sprintf(info,"saved \"seq.dat\"");
+				//gotoxy(0,0);
+				sprintf(info,"Wrote \"seq.dat\"");
 				fclose(f);
 			}
-			if(k=='O')
+			if(key=='E')
 			{
 				FILE *f=fopen("seq.dat","rb");
 				if(!f)exit(7);
 				fread(seq,1,sizeof(seq),f);
-				gotoxy(0,0);
-				sprintf(info,"opened \"seq.dat\"");
+				//gotoxy(0,0);
+				sprintf(info,"Opened \"seq.dat\"");
 				fclose(f);
 			}
 
 			// Space --> Play audio
-			if(k==KEY_SPACE)
+			if(key==' ')
 			{
 				//HWAVEOUT hWaveOut = 0;
 				//WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, samples, samples*2, 2, 16, 0 };
@@ -161,7 +181,7 @@ int main(int argc,char **argv)
 
 				// Synthesize audio data
 				for(int i=0,j=0;i<16;i++)
-					for(int k=0;k<2000;k++)
+					for(int key=0;key<2000;key++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
@@ -169,15 +189,15 @@ int main(int argc,char **argv)
 								)/4.0;
 
 				// Play audio
-				Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
-					(PaStreamCallback*)audio_cb,b);
+				//Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
+					//(PaStreamCallback*)audio_cb,b);
 				//Pa_SetStreamFinishedCallback(pa,
 					//(PaStreamFinishedCallback*)
 						//audio_finished_cb);
 				Pa_StartStream(pa);
 				Pa_Sleep(1000);
 				Pa_StopStream(pa);
-				Pa_CloseStream(pa);
+				//Pa_CloseStream(pa);
 
 				//WAVEHDR header = { b, samples, 0, 0, 0, 0, 0, 0 };
 				//waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
@@ -185,16 +205,17 @@ int main(int argc,char **argv)
 				//waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
 				//waveOutClose(hWaveOut);
 				// Sleep(samples);
+				sprintf(info,"Played stream");
 			}
 
-			if(k=='R')//export raw data
+			if(key=='R')//export raw data
 			{
 				FILE *f=fopen("audio.dat","wb");
 				if(!f)exit(8);
 
 				int samp=0;
 				for(int i=0,j=0;i<16;i++)
-					for(int k=0;k<2000;k++)
+					for(int key=0;key<2000;key++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
@@ -203,11 +224,10 @@ int main(int argc,char **argv)
 
 
 				fwrite(b,sizeof(int16_t),samples,f);
-				gotoxy(0,0);
-				sprintf(info,"wrote raw audio to \"audio.dat\"");
+				sprintf(info,"Wrote raw audio to \"audio.dat\"");
 				fclose(f);
 			}
-			if(k=='E')//export WAV file
+			if(key=='X')//export WAV file
 			{
 				//copy header
 				uint8_t hdr[44];
@@ -222,7 +242,7 @@ int main(int argc,char **argv)
 
 				int samp=0;
 				for(int i=0,j=0;i<16;i++)
-					for(int k=0;k<2000;k++)
+					for(int key=0;key<2000;key++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
@@ -232,29 +252,17 @@ int main(int argc,char **argv)
 
 				fwrite(hdr,1,44,f);//write WAV header
 				fwrite(b,sizeof(int16_t),samples,f);
-				gotoxy(0,0);
-				sprintf(info,"exported \"seqexport.wav\"");
+				//gotoxy(0,0);
+				sprintf(info,"Exported \"seqexport.wav\"");
 				fclose(f);
 			}
 
-			if(k==KEY_PGUP)
-			{
-				if(patternoffset-1>=0)
-					--patternoffset,
-					--y;
-			}
-
-			if(k==KEY_PGDOWN)
-			{
-				patternoffset++;
-				y++;
-			}
-
 			//piano keyboard layout for comp kb
-			if(k>=97 && k<=122 && (k!='h'&&k!='j'&&k!='k'&&k!='l'))
+			if(key>=97 && key<=122 &&
+				(key!='h'&&key!='j'&&key!='k'&&key!='l'))
 			{
 				uint32_t fre=0;
-				switch(k)
+				switch(key)
 				{
 				case 'z':
 					fre=131;//c3
@@ -314,38 +322,68 @@ int main(int argc,char **argv)
 				seq[channel][y].msg=fre;
 			}
 
-			// Draw tracker note data/UI
-			cls();
-			for(int i=patternoffset;i<patternoffset+16;i++)
-			{
-				gotoxy(0,i+1);
-				if(y==i)setBackgroundColor(BLUE);
-				else setBackgroundColor(BLACK);
-
-				setColor(DARKGREY);
-				printf("%4u",i);
-				setColor(WHITE);
-				printf("%12u",seq[channel][i].msg);
-				setColor(CYAN);
-				printf("%12u",seq[channel][i].p1);
-				setColor(MAGENTA);
-				printf("%12u\n",seq[channel][i].p2);
-
-			}
-
-			// Draw UI
-			setBackgroundColor(BLACK);
-			setColor(GREY);
-			gotoxy(0,19);
-			setColor(BLUE);
-			char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
-			printf("Channel:%u%s",channel,chan_name[channel]);
-			setColor(GREY);
-			printf("\n%-15s%-15s%-15s","_Q_:Quit","_S_:Save","_O_:Open");
-			printf("\n%-15s%-15s%-15s","_E_:Export","_R_:Export Raw","SPACE:Play");
-			setColor(DARKGREY);
-			printf("\n[%s]",info);
+			// Mark key as read
+			key=-1;
+			// Clear screen in preparation for redraw
+			clear();
 		}
+
+		// Draw tracker note data/UI
+		for(int i=patternoffset;i<patternoffset+16;i++)
+		{
+			int yy=0;
+			int yinc=8;
+			int hilite=y==i;
+
+			if(hilite)attron(COLOR_PAIR(C_HILITE));
+
+			if(!hilite)attron(COLOR_PAIR(C_YELLOW));
+			mvprintw(i,yy,"%u",i);
+			if(!hilite)attroff(COLOR_PAIR(C_YELLOW));
+
+			if(!hilite)attron(COLOR_PAIR(C_WHITE));
+			mvprintw(i,yy+=yinc,"%u",seq[channel][i].msg);
+			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+
+			if(!hilite)attron(COLOR_PAIR(C_BLUE));
+			mvprintw(i,yy+=yinc,"%u",seq[channel][i].p1);
+			if(!hilite)attroff(COLOR_PAIR(C_BLUE));
+
+			if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
+			mvprintw(i,yy+=yinc,"%u\n",seq[channel][i].p2);
+			if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
+
+			if(hilite)attroff(COLOR_PAIR(C_HILITE));
+		}
+
+		// Draw UI
+		{
+			int xx=17;
+			//setBackgroundColor(BLACK);
+			attron(COLOR_PAIR(C_CYAN));
+			char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
+			mvprintw(xx++,0,"Channel:%u%s\n",channel,chan_name[channel]);
+			attroff(COLOR_PAIR(C_CYAN));
+
+			attron(COLOR_PAIR(C_WHITE));
+			mvprintw(xx++,0,"_Q_ Quit\t_W_ Write\t_E_ Edit");
+			mvprintw(xx++,0,"_X_ Export\t_R_ Export Raw\tSPACE Play");
+			attroff(COLOR_PAIR(C_WHITE));
+
+			// Draw info string if not empty
+			if(strcmp(info,""))
+			{
+				attron(COLOR_PAIR(C_MAGENTA));
+				mvprintw(xx++,0,"\n[%s]",info);
+				attroff(COLOR_PAIR(C_MAGENTA));
+			}
+		}
+
+		// Update ncurses screen
+		refresh();
+		usleep(20000);
 	}
-	exit(0);
+	Pa_Terminate();
+	pthread_cancel(getkeythread);
+	endwin();
 }
