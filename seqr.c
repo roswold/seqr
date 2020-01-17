@@ -168,7 +168,7 @@ int main(int argc,char **argv)
 								)/4.0;
 
 				// Play audio
-				Pa_OpenDefaultStream(&pa,0,2,paInt16,44100,samples/2,
+				Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
 					(PaStreamCallback*)audio_cb,b);
 				Pa_SetStreamFinishedCallback(pa,
 					(PaStreamFinishedCallback*)
