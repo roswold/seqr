@@ -3,6 +3,7 @@ before_install:
 - sudo apt-get update
 - sudo apt-get -y install portaudio19-dev
 - whereis libportaudio
+- whereis libm
 - whereis portaudio
 os: linux
 script: make
