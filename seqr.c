@@ -1,11 +1,13 @@
 #include"rlutil.h"
+#include<portaudio.h>
+
 #include<stdlib.h>
 #include<stdio.h>
 #include<inttypes.h>
 #include<math.h>
 #include<time.h>
+#include<stdbool.h>
 //#include<mmsystem.h>
-#include<portaudio.h>
 
 // Portaudio callback
 int audio_cb(const void*inp,void*outp,long unsigned fc,
@@ -75,7 +77,7 @@ int main(int argc,char **argv)
 	// Portaudio setup
 	Pa_Initialize();
 
-	// Rlutil setup
+	// rlutil setup
 	atexit(cls);
 	atexit(resetColor);
 	atexit(showcursor);
@@ -83,7 +85,7 @@ int main(int argc,char **argv)
 	saveDefaultColor();
 	setConsoleTitle(*argv);
 
-	//sy stuff
+	// Synth stuff
 	srand(time(NULL));
 	uint32_t samplerate=44100;
 	uint32_t samples=samplerate;
@@ -91,7 +93,7 @@ int main(int argc,char **argv)
 	double a=11000;
 	int32_t bpm=120;
 
-	//seq stuff
+	// Sequencer stuff
 	// Msg seq[2][16];
 	uint32_t y=0;
 	char info[64]={0};
@@ -107,7 +109,6 @@ int main(int argc,char **argv)
 		exit(1);
 	}
 
-
 	// Display message until keypress
 	cls();
 	gotoxy(0,0);
@@ -118,7 +119,7 @@ int main(int argc,char **argv)
 	// anykey("\n");
 
 	// Tracker screen
-	while (1)
+	while(true)
 	{
 		// Check for keyboard input
 		if (kbhit())
@@ -170,9 +171,9 @@ int main(int argc,char **argv)
 				// Play audio
 				Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
 					(PaStreamCallback*)audio_cb,b);
-				Pa_SetStreamFinishedCallback(pa,
-					(PaStreamFinishedCallback*)
-						audio_finished_cb);
+				//Pa_SetStreamFinishedCallback(pa,
+					//(PaStreamFinishedCallback*)
+						//audio_finished_cb);
 				Pa_StartStream(pa);
 				Pa_Sleep(1000);
 				Pa_StopStream(pa);
@@ -337,7 +338,8 @@ int main(int argc,char **argv)
 			setColor(GREY);
 			gotoxy(0,19);
 			setColor(BLUE);
-			printf("Channel:%u",channel);
+			char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
+			printf("Channel:%u%s",channel,chan_name[channel]);
 			setColor(GREY);
 			printf("\n%-15s%-15s%-15s","_Q_:Quit","_S_:Save","_O_:Open");
 			printf("\n%-15s%-15s%-15s","_E_:Export","_R_:Export Raw","SPACE:Play");
