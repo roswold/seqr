@@ -1,7 +1,4 @@
-#include<ncurses.h>
-#include<pthread.h>
 #include<portaudio.h>
-
 #include<stdio.h>
 #include<stdlib.h>
 #include<stdint.h>
@@ -12,20 +9,11 @@
 #include<time.h>
 //#include<mmsystem.h>
 
-// Asynchronous keyboard input thread
-pthread_mutex_t mut;
-void*getkey(void*k)
-{
-	int*key=k;
-	while(true)
-	{
-		pthread_mutex_lock(&mut);
-		*key=getchar();
-		pthread_mutex_unlock(&mut);
-		usleep(20000);
-	}
-	return NULL;
-}
+#if defined(_WIN32) || defined(__CYGWIN__)
+#	include<pdcurses.h>
+#else
+#	include<ncurses.h>
+#endif
 
 // Portaudio callback
 int audio_cb(const void*inp,void*outp,long unsigned fc,
@@ -85,10 +73,9 @@ typedef struct Msg
 	uint32_t msg,p1,p2;
 } Msg;
 
-Msg seq[4][16];
-int main(int argc,char **argv)
+int main(int argc,char**argv)
 {
-	pthread_t getkeythread;
+	Msg seq[4][16]={0};
 	int key=-1;
 
 	int32_t audio_data[512];
@@ -107,9 +94,6 @@ int main(int argc,char **argv)
 	init_pair(5,COLOR_MAGENTA,COLOR_BLACK);
 	init_pair(6,COLOR_BLUE,COLOR_BLACK);
 	init_pair(7,COLOR_BLACK,COLOR_WHITE);
-
-	// Pthread setup for async key input
-	pthread_create(&getkeythread,NULL,getkey,&key);
 
 	// seqr synth stuff
 	srand(time(NULL));
@@ -144,7 +128,60 @@ int main(int argc,char **argv)
 	while(true)
 	{
 
+
+		// Draw tracker note data/UI
+		for(int i=patternoffset;i<patternoffset+16;i++)
+		{
+			int yy=0;
+			int yinc=8;
+			int hilite=y==i;
+
+			if(hilite)attron(COLOR_PAIR(C_HILITE));
+
+			if(!hilite)attron(COLOR_PAIR(C_YELLOW));
+			mvprintw(i,yy,"%u",i);
+			if(!hilite)attroff(COLOR_PAIR(C_YELLOW));
+
+			if(!hilite)attron(COLOR_PAIR(C_WHITE));
+			mvprintw(i,yy+=yinc,"%u",seq[channel][i].msg);
+			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+
+			if(!hilite)attron(COLOR_PAIR(C_BLUE));
+			mvprintw(i,yy+=yinc,"%u",seq[channel][i].p1);
+			if(!hilite)attroff(COLOR_PAIR(C_BLUE));
+
+			if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
+			mvprintw(i,yy+=yinc,"%u\n",seq[channel][i].p2);
+			if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
+
+			if(hilite)attroff(COLOR_PAIR(C_HILITE));
+		}
+
+		// Draw UI
+		{
+			int xx=17;
+			//setBackgroundColor(BLACK);
+			attron(COLOR_PAIR(C_CYAN));
+			char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
+			mvprintw(xx++,0,"Channel:%u%s\n",channel,chan_name[channel]);
+			attroff(COLOR_PAIR(C_CYAN));
+
+			attron(COLOR_PAIR(C_WHITE));
+			mvprintw(xx++,0,"_Q_ Quit\t_W_ Write\t_E_ Edit");
+			mvprintw(xx++,0,"_X_ Export\t_R_ Export Raw\tSPACE Play");
+			attroff(COLOR_PAIR(C_WHITE));
+
+			// Draw info string if not empty
+			if(strcmp(info,""))
+			{
+				attron(COLOR_PAIR(C_MAGENTA));
+				mvprintw(xx++,0,"\n[%s]",info);
+				attroff(COLOR_PAIR(C_MAGENTA));
+			}
+		}
+
 		// Check for keyboard input
+		key=getch();
 		if(key>0)
 		{
 			if(key=='Q')break;
@@ -328,62 +365,10 @@ int main(int argc,char **argv)
 			clear();
 		}
 
-		// Draw tracker note data/UI
-		for(int i=patternoffset;i<patternoffset+16;i++)
-		{
-			int yy=0;
-			int yinc=8;
-			int hilite=y==i;
-
-			if(hilite)attron(COLOR_PAIR(C_HILITE));
-
-			if(!hilite)attron(COLOR_PAIR(C_YELLOW));
-			mvprintw(i,yy,"%u",i);
-			if(!hilite)attroff(COLOR_PAIR(C_YELLOW));
-
-			if(!hilite)attron(COLOR_PAIR(C_WHITE));
-			mvprintw(i,yy+=yinc,"%u",seq[channel][i].msg);
-			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
-
-			if(!hilite)attron(COLOR_PAIR(C_BLUE));
-			mvprintw(i,yy+=yinc,"%u",seq[channel][i].p1);
-			if(!hilite)attroff(COLOR_PAIR(C_BLUE));
-
-			if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
-			mvprintw(i,yy+=yinc,"%u\n",seq[channel][i].p2);
-			if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
-
-			if(hilite)attroff(COLOR_PAIR(C_HILITE));
-		}
-
-		// Draw UI
-		{
-			int xx=17;
-			//setBackgroundColor(BLACK);
-			attron(COLOR_PAIR(C_CYAN));
-			char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
-			mvprintw(xx++,0,"Channel:%u%s\n",channel,chan_name[channel]);
-			attroff(COLOR_PAIR(C_CYAN));
-
-			attron(COLOR_PAIR(C_WHITE));
-			mvprintw(xx++,0,"_Q_ Quit\t_W_ Write\t_E_ Edit");
-			mvprintw(xx++,0,"_X_ Export\t_R_ Export Raw\tSPACE Play");
-			attroff(COLOR_PAIR(C_WHITE));
-
-			// Draw info string if not empty
-			if(strcmp(info,""))
-			{
-				attron(COLOR_PAIR(C_MAGENTA));
-				mvprintw(xx++,0,"\n[%s]",info);
-				attroff(COLOR_PAIR(C_MAGENTA));
-			}
-		}
-
 		// Update ncurses screen
 		refresh();
-		usleep(20000);
+		//usleep(20000);
 	}
 	Pa_Terminate();
-	pthread_cancel(getkeythread);
 	endwin();
 }
