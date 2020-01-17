@@ -2,5 +2,7 @@ language: c
 before_install:
 - sudo apt -q update
 - sudo apt -y install portaudio19-dev
+- whereis libportaudio
+- whereis portaudio
 os: linux
 script: make
