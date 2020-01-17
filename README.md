@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/cr0sd/seqr.svg?branch=master)](https://travis-ci.com/cr0sd/seqr)
 # seqr
 ## Curses-based synth &amp; tracker/sequencer with 5 waveforms, 4 channels
 
