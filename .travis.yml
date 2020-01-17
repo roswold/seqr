@@ -1,6 +1,7 @@
 language: c
 before_install:
-- sudo apt install portaudio19-dev
+- sudo apt update
+- sudo apt -y install portaudio19-dev
 os:
 - linux
 #- windows
