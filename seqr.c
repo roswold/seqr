@@ -22,6 +22,14 @@ int audio_cb(const void*inp,void*outp,long unsigned fc,
 	return 0;
 }
 
+// Audio is finished
+void audio_finished_cb(void*data)
+{
+	int16_t*d=data;
+	for(int i=0;i<44100;++i)
+		d[i]=0;
+}
+
 #define SEMITC pow(2,1/12.0)
 #define raisesemi(f,n) (f*pow(SEMITC,(n)))
 int16_t sn(double f,double o,double r,double a)
@@ -150,6 +158,7 @@ int main(int argc,char **argv)
 				//WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, samples, samples*2, 2, 16, 0 };
 				//waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
 
+				// Synthesize audio data
 				for(int i=0,j=0;i<16;i++)
 					for(int k=0;k<2000;k++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
@@ -161,8 +170,11 @@ int main(int argc,char **argv)
 				// Play audio
 				Pa_OpenDefaultStream(&pa,0,2,paInt16,44100,samples/2,
 					(PaStreamCallback*)audio_cb,b);
+				Pa_SetStreamFinishedCallback(pa,
+					(PaStreamFinishedCallback*)
+						audio_finished_cb);
 				Pa_StartStream(pa);
-				Pa_Sleep(2000);
+				Pa_Sleep(1000);
 				Pa_StopStream(pa);
 				Pa_CloseStream(pa);
 
@@ -171,18 +183,15 @@ int main(int argc,char **argv)
 				//waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
 				//waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
 				//waveOutClose(hWaveOut);
-
 				// Sleep(samples);
-
 			}
+
 			if(k=='R')//export raw data
 			{
 				FILE *f=fopen("audio.dat","wb");
 				if(!f)exit(8);
 
 				int samp=0;
-				// for(int i=0;i<samples;i++)
-					// b[i]=sw(fr,i,samplerate,a);
 				for(int i=0,j=0;i<16;i++)
 					for(int k=0;k<2000;k++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
@@ -211,8 +220,6 @@ int main(int argc,char **argv)
 				if(!f)exit(8);
 
 				int samp=0;
-				// for(int i=0;i<samples;i++)
-					// b[i]=sw(fr,i,samplerate,a);
 				for(int i=0,j=0;i<16;i++)
 					for(int k=0;k<2000;k++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
@@ -228,12 +235,14 @@ int main(int argc,char **argv)
 				sprintf(info,"exported \"seqexport.wav\"");
 				fclose(f);
 			}
+
 			if(k==KEY_PGUP)
 			{
 				if(patternoffset-1>=0)
 					--patternoffset,
 					--y;
 			}
+
 			if(k==KEY_PGDOWN)
 			{
 				patternoffset++;
@@ -304,6 +313,7 @@ int main(int argc,char **argv)
 				seq[channel][y].msg=fre;
 			}
 
+			// Draw tracker note data/UI
 			cls();
 			for(int i=patternoffset;i<patternoffset+16;i++)
 			{
@@ -322,6 +332,7 @@ int main(int argc,char **argv)
 
 			}
 
+			// Draw UI
 			setBackgroundColor(BLACK);
 			setColor(GREY);
 			gotoxy(0,19);
