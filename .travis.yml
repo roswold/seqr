@@ -1,6 +1,6 @@
 language: c
 before_install:
-- sudo apt update
-- sudo apt -y install pyortaudio19-dev
+- sudo apt -q update
+- sudo apt -y install portaudio19-dev
 os: linux
 script: make
