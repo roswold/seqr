@@ -138,9 +138,9 @@ int main(int argc,char**argv)
 
 			if(hilite)attron(COLOR_PAIR(C_HILITE));
 
-			if(!hilite)attron(COLOR_PAIR(C_YELLOW));
+			if(!hilite)attron(COLOR_PAIR(C_GREEN));
 			mvprintw(i,yy,"%u",i);
-			if(!hilite)attroff(COLOR_PAIR(C_YELLOW));
+			if(!hilite)attroff(COLOR_PAIR(C_GREEN));
 
 			if(!hilite)attron(COLOR_PAIR(C_WHITE));
 			mvprintw(i,yy+=yinc,"%u",seq[channel][i].msg);
