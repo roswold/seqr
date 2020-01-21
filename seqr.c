@@ -95,6 +95,14 @@ int main(int argc,char**argv)
 	int32_t audio_data[512];
 	PaStream*pa;
 
+	// Parse command line options
+	for(int i=0;i<argc;++i)
+		if(strcmp(argv[i],"--help")==0 ||
+			strcmp(argv[i],"-h")==0)
+			puts("seqr version 0.0"),
+			exit(0);
+
+	// Signal hander, atexit
 	signal(SIGINT,sighandler);
 	atexit(quit);
 
