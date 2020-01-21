@@ -5,6 +5,7 @@
 #include<stdbool.h>
 #include<string.h>
 #include<unistd.h>
+#include<signal.h>
 #include<math.h>
 #include<time.h>
 //#include<mmsystem.h>
@@ -14,6 +15,18 @@
 #else
 #	include<ncurses.h>
 #endif
+
+void quit(void)
+{
+	Pa_Terminate();
+	endwin();
+}
+
+void sighandler(int sig)
+{
+	if(sig==SIGINT)
+		exit(1);
+}
 
 // Portaudio callback
 int audio_cb(const void*inp,void*outp,long unsigned fc,
@@ -75,11 +88,15 @@ typedef struct Msg
 
 int main(int argc,char**argv)
 {
+	// Array of Msgs (16 per channel)
 	Msg seq[4][16]={0};
 	int key=-1;
 
 	int32_t audio_data[512];
 	PaStream*pa;
+
+	signal(SIGINT,sighandler);
+	atexit(quit);
 
 	// ncurses setup
 	initscr();
@@ -121,7 +138,7 @@ int main(int argc,char**argv)
 
 	// Portaudio setup
 	Pa_Initialize();
-	Pa_OpenDefaultStream(&pa,0,2,paInt16,44100,44100/4,
+	Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,44100/4,
 		(PaStreamCallback*)audio_cb,b);
 
 	// Tracker screen
@@ -288,6 +305,7 @@ int main(int argc,char**argv)
 
 
 				fwrite(hdr,1,44,f);//write WAV header
+				//fwrite(b,sizeof(int16_t),samples,f);
 				fwrite(b,sizeof(int16_t),samples,f);
 				//gotoxy(0,0);
 				sprintf(info,"Exported \"seqexport.wav\"");
@@ -369,6 +387,7 @@ int main(int argc,char**argv)
 		refresh();
 		//usleep(20000);
 	}
-	Pa_Terminate();
-	endwin();
+	// These called by atexit:
+	//Pa_Terminate();
+	//endwin();
 }
