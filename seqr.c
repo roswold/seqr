@@ -36,8 +36,8 @@ int audio_cb(const void*inp,void*outp,long unsigned fc,
 	inp=inp;
 	ti=ti;
 	fl=fl;
-	int32_t*out=outp;
-	int32_t*d=data;
+	int16_t*out=outp;
+	int16_t*d=data;
 	for(unsigned i=0;i<fc;++i)
 		*out++=*d++;
 	return 0;
@@ -146,7 +146,7 @@ int main(int argc,char**argv)
 
 	// Portaudio setup
 	Pa_Initialize();
-	Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,44100/4,
+	Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
 		(PaStreamCallback*)audio_cb,b);
 
 	// Tracker screen
@@ -212,14 +212,18 @@ int main(int argc,char**argv)
 			if(key=='Q')break;
 			if(key==KEY_UP||key=='k')y=(y-patternoffset-1)%16+patternoffset;
 			if(key==KEY_DOWN||key=='j')y=(y+1-patternoffset)%16+patternoffset;
-			if(key==KEY_LEFT||key=='h')channel=--channel%4;
-			if(key==KEY_RIGHT||key=='l')channel=++channel%4;
+			if(key==KEY_LEFT||key=='h')
+			{
+				if(channel==0)channel=3;
+				else --channel;
+			}
+			if(key==KEY_RIGHT||key=='l')channel=(channel+1)%4;
 			if(key=='Q')exit(7);
 			if(key=='W')
 			{
 				FILE *f=fopen("seq.dat","wb");
 				if(!f)exit(7);
-				fwrite(seq,1,sizeof(seq),f);
+				fwrite(seq,sizeof(seq),1,f);
 				//gotoxy(0,0);
 				sprintf(info,"Wrote \"seq.dat\"");
 				fclose(f);
@@ -228,7 +232,7 @@ int main(int argc,char**argv)
 			{
 				FILE *f=fopen("seq.dat","rb");
 				if(!f)exit(7);
-				fread(seq,1,sizeof(seq),f);
+				fread(seq,sizeof(seq),1,f);
 				//gotoxy(0,0);
 				sprintf(info,"Opened \"seq.dat\"");
 				fclose(f);
@@ -247,8 +251,8 @@ int main(int argc,char**argv)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
-								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
-								)/4.0;
+								sw(seq[3][i].msg,j  ,samplerate,seq[3][i].msg?a:0)
+								)/4.0,++j;
 
 				// Play audio
 				//Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
@@ -281,8 +285,8 @@ int main(int argc,char**argv)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
-								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
-								)/4.0;
+								sw(seq[3][i].msg,j  ,samplerate,seq[3][i].msg?a:0)
+								)/4.0,++j;
 
 
 				fwrite(b,sizeof(int16_t),samples,f);
@@ -308,8 +312,8 @@ int main(int argc,char**argv)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
 								sq(seq[1][i].msg,j,  samplerate,seq[1][i].msg?a:0)+
 								tr(seq[2][i].msg,j,  samplerate,seq[2][i].msg?a:0)+
-								sw(seq[3][i].msg,j++,samplerate,seq[3][i].msg?a:0)
-								)/4.0;
+								sw(seq[3][i].msg,j  ,samplerate,seq[3][i].msg?a:0)
+								)/4.0,++j;
 
 
 				fwrite(hdr,1,44,f);//write WAV header
@@ -395,6 +399,9 @@ int main(int argc,char**argv)
 		refresh();
 		//usleep(20000);
 	}
+
+	if(b)
+		free(b);
 	// These called by atexit:
 	//Pa_Terminate();
 	//endwin();

@@ -15,7 +15,7 @@ LDFLAGS += -lncurses
 endif
 
 all:$(OBJS)
-$(OBJS):
+%:%.c
 	$(CC) -o $@ $@.c $(CFLAGS) $(LDFLAGS)
 clean:
 	$(RM) *.o $(OBJS)
