@@ -1,6 +1,6 @@
 CFLAGS= -Wfatal-errors
 LDFLAGS= -lportaudio -lm -lpthread -pthread
-OBJS=seqr
+OBJS= seqr
 
 # OS Specific
 ifeq ($(OS),Windows_NT)
@@ -15,7 +15,7 @@ LDFLAGS += -lncurses
 endif
 
 all:$(OBJS)
-%:%.c
+%:%.c %.h
 	$(CC) -o $@ $@.c $(CFLAGS) $(LDFLAGS)
 clean:
 	$(RM) *.o $(OBJS)
