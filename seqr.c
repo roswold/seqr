@@ -109,15 +109,16 @@ int main(int argc,char**argv)
 	// ncurses setup
 	initscr();
 	start_color();
+	use_default_colors();
 
 	// ncurses colors
-	enum{C_CYAN=1,C_GREEN,C_YELLOW,C_WHITE,C_MAGENTA,C_BLUE,C_HILITE};
-	init_pair(1,COLOR_CYAN,COLOR_BLACK);
-	init_pair(2,COLOR_GREEN,COLOR_BLACK);
-	init_pair(3,COLOR_YELLOW,COLOR_BLACK);
-	init_pair(4,COLOR_WHITE,COLOR_BLACK);
-	init_pair(5,COLOR_MAGENTA,COLOR_BLACK);
-	init_pair(6,COLOR_BLUE,COLOR_BLACK);
+	enum{C_TRANSPARENT=-1,C_CYAN=1,C_GREEN,C_YELLOW,C_WHITE,C_MAGENTA,C_BLUE,C_HILITE};
+	init_pair(1,COLOR_CYAN,C_TRANSPARENT);
+	init_pair(2,COLOR_GREEN,C_TRANSPARENT);
+	init_pair(3,COLOR_YELLOW,C_TRANSPARENT);
+	init_pair(4,COLOR_WHITE,C_TRANSPARENT);
+	init_pair(5,COLOR_MAGENTA,C_TRANSPARENT);
+	init_pair(6,COLOR_BLUE,C_TRANSPARENT);
 	init_pair(7,COLOR_BLACK,COLOR_WHITE);
 
 	// seqr synth stuff
@@ -146,8 +147,11 @@ int main(int argc,char**argv)
 
 	// Portaudio setup
 	Pa_Initialize();
+	//Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
+		//(PaStreamCallback*)audio_cb,b);
 	Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
-		(PaStreamCallback*)audio_cb,b);
+		NULL,NULL);
+	Pa_StartStream(pa);
 
 	// Tracker screen
 	while(true)
@@ -260,9 +264,13 @@ int main(int argc,char**argv)
 				//Pa_SetStreamFinishedCallback(pa,
 					//(PaStreamFinishedCallback*)
 						//audio_finished_cb);
-				Pa_StartStream(pa);
-				Pa_Sleep(1000);
-				Pa_StopStream(pa);
+				//Pa_StartStream(pa);
+
+				//TODO: Make this non-blocking
+				for(int i=0;i<4;++i)
+					Pa_WriteStream(pa,b+(samples/4)*i,samples/4);
+
+				//Pa_StopStream(pa);
 				//Pa_CloseStream(pa);
 
 				//WAVEHDR header = { b, samples, 0, 0, 0, 0, 0, 0 };
@@ -279,7 +287,6 @@ int main(int argc,char**argv)
 				FILE *f=fopen("audio.dat","wb");
 				if(!f)exit(8);
 
-				int samp=0;
 				for(int i=0,j=0;i<16;i++)
 					for(int key=0;key<2000;key++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
@@ -293,20 +300,17 @@ int main(int argc,char**argv)
 				sprintf(info,"Wrote raw audio to \"audio.dat\"");
 				fclose(f);
 			}
+
 			if(key=='X')//export WAV file
 			{
-				//copy header
-				uint8_t hdr[44];
-				FILE *fi=fopen("wavhdr.dat","rb");
-				if(!fi)return 9;
-				fread(hdr,1,44,fi);
-				fclose(fi);
+				// Wave file header tailored for this purpose
+				uint8_t hdr[]={0x52, 0x49, 0x46, 0x46, 0xac, 0x58, 0x01, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20,
+					0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xac, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
+					0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0x88, 0x58, 0x01, 0x00, 0x0a};
 
-				//generate, output samples
+				// Generate, output samples
 				FILE *f=fopen("seqexport.wav","wb");
 				if(!f)exit(8);
-
-				int samp=0;
 				for(int i=0,j=0;i<16;i++)
 					for(int key=0;key<2000;key++)
 						b[j]=(	sn(seq[0][i].msg,j,  samplerate,seq[0][i].msg?a:0)+
@@ -315,11 +319,8 @@ int main(int argc,char**argv)
 								sw(seq[3][i].msg,j  ,samplerate,seq[3][i].msg?a:0)
 								)/4.0,++j;
 
-
 				fwrite(hdr,1,44,f);//write WAV header
-				//fwrite(b,sizeof(int16_t),samples,f);
 				fwrite(b,sizeof(int16_t),samples,f);
-				//gotoxy(0,0);
 				sprintf(info,"Exported \"seqexport.wav\"");
 				fclose(f);
 			}
