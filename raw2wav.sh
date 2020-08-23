@@ -4,7 +4,7 @@ _this=$(basename "$0")
 
 # Get input file
 if [ $# -lt 1 ] || [ $1 = '--help' ]; then
-	echo "usage: $_this <inputfile> [<outputfile>]"
+	echo "usage: $_this <INPUTRAWFILE> [<OUTPUTWAVFILE>]"
 	exit 1
 else
 	_inputfile=$1
@@ -29,4 +29,4 @@ if [ -f $_outputfile ]; then
 fi
 
 # Create 'raw.wav' from 'raw.dat'
-sox -b 16 -c 1 -r 44100 -e signed-integer $_inputfile $_outputfile
+sox -b 16 -c 1 -r 44100 -t raw -e signed-integer $_inputfile $_outputfile

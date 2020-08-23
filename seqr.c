@@ -39,9 +39,13 @@ typedef struct audio_thread_cb_struct
 void*audio_thread_cb(void*d)
 {
 	audio_thread_cb_struct*s=(audio_thread_cb_struct*)d;
-	Pa_StartStream(s->pa);
-	Pa_WriteStream(s->pa,s->b,s->fc);
-	Pa_StopStream(s->pa);
+
+	if(Pa_IsStreamStopped(s->pa))
+	{
+		Pa_StartStream(s->pa);
+		Pa_WriteStream(s->pa,s->b,s->fc);
+		Pa_StopStream(s->pa);
+	}
 	return NULL;
 }
 
@@ -268,9 +272,6 @@ int main(int argc,char**argv)
 			// Space --> Play audio
 			if(key==' ')
 			{
-				//HWAVEOUT hWaveOut = 0;
-				//WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, samples, samples*2, 2, 16, 0 };
-				//waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
 
 				// Synthesize audio data
 				for(int i=0,j=0;i<16;i++)
@@ -281,34 +282,13 @@ int main(int argc,char**argv)
 								sw(seq[3][i].msg,j  ,samplerate,seq[3][i].msg?a:0)
 								)/4.0,++j;
 
-				// Play audio
-				//Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
-					//(PaStreamCallback*)audio_cb,b);
-				//Pa_SetStreamFinishedCallback(pa,
-					//(PaStreamFinishedCallback*)
-						//audio_finished_cb);
-				//Pa_StartStream(pa);
-
-				//TODO: Make this non-blocking
-				//for(int i=0;i<4;++i)
-				if(Pa_IsStreamStopped(pa))
+				// Write synthesized output to stream
 				{
-					//audio_thread_cb_struct s={.pa=pa,.b=b+(samples/4)*i,.fc=(samples/4)};
-					audio_thread_cb_struct s={.pa=pa,.b=b,.fc=(samples)};
 					pthread_t th;
+					audio_thread_cb_struct s={.pa=pa,.b=b,.fc=(samples)};
 					pthread_create(&th,NULL,audio_thread_cb,&s);
-					//Pa_WriteStream(pa,b+(samples/4)*i,samples/4);
 				}
 
-				//Pa_StopStream(pa);
-				//Pa_CloseStream(pa);
-
-				//WAVEHDR header = { b, samples, 0, 0, 0, 0, 0, 0 };
-				//waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
-				//waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
-				//waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
-				//waveOutClose(hWaveOut);
-				// Sleep(samples);
 				sprintf(info,"Played stream");
 			}
 
