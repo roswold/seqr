@@ -7,6 +7,7 @@
 #include<unistd.h>
 #include<signal.h>
 #include<math.h>
+#include<pthread.h>
 #include<time.h>
 //#include<mmsystem.h>
 
@@ -28,6 +29,22 @@ void sighandler(int sig)
 		exit(1);
 }
 
+typedef struct audio_thread_cb_struct
+{
+	PaStream*pa;
+	int16_t*b;
+	unsigned int fc;
+} audio_thread_cb_struct;
+
+void*audio_thread_cb(void*d)
+{
+	audio_thread_cb_struct*s=(audio_thread_cb_struct*)d;
+	Pa_StartStream(s->pa);
+	Pa_WriteStream(s->pa,s->b,s->fc);
+	Pa_StopStream(s->pa);
+	return NULL;
+}
+
 // Portaudio callback
 int audio_cb(const void*inp,void*outp,long unsigned fc,
 	PaStreamCallbackTimeInfo*ti,
@@ -40,7 +57,7 @@ int audio_cb(const void*inp,void*outp,long unsigned fc,
 	int16_t*d=data;
 	for(unsigned i=0;i<fc;++i)
 		*out++=*d++;
-	return 0;
+	return paContinue;
 }
 
 // Audio is finished
@@ -110,6 +127,7 @@ int main(int argc,char**argv)
 	initscr();
 	start_color();
 	use_default_colors();
+	curs_set(0);
 
 	// ncurses colors
 	enum{C_TRANSPARENT=-1,C_CYAN=1,C_GREEN,C_YELLOW,C_WHITE,C_MAGENTA,C_BLUE,C_HILITE};
@@ -147,11 +165,8 @@ int main(int argc,char**argv)
 
 	// Portaudio setup
 	Pa_Initialize();
-	//Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
-		//(PaStreamCallback*)audio_cb,b);
 	Pa_OpenDefaultStream(&pa,0,1,paInt16,44100,samples,
 		NULL,NULL);
-	Pa_StartStream(pa);
 
 	// Tracker screen
 	while(true)
@@ -223,6 +238,8 @@ int main(int argc,char**argv)
 			}
 			if(key==KEY_RIGHT||key=='l')channel=(channel+1)%4;
 			if(key=='Q')exit(7);
+
+			// Write file
 			if(key=='W')
 			{
 				FILE *f=fopen("seq.dat","wb");
@@ -232,14 +249,20 @@ int main(int argc,char**argv)
 				sprintf(info,"Wrote \"seq.dat\"");
 				fclose(f);
 			}
+
+			// Edit existing file
 			if(key=='E')
 			{
 				FILE *f=fopen("seq.dat","rb");
-				if(!f)exit(7);
-				fread(seq,sizeof(seq),1,f);
-				//gotoxy(0,0);
-				sprintf(info,"Opened \"seq.dat\"");
-				fclose(f);
+				if(!f)
+					sprintf(info,"Failed to open \"seq.dat\"");
+				else
+				{
+					fread(seq,sizeof(seq),1,f);
+					//gotoxy(0,0);
+					sprintf(info,"Opened \"seq.dat\"");
+					fclose(f);
+				}
 			}
 
 			// Space --> Play audio
@@ -267,8 +290,15 @@ int main(int argc,char**argv)
 				//Pa_StartStream(pa);
 
 				//TODO: Make this non-blocking
-				for(int i=0;i<4;++i)
-					Pa_WriteStream(pa,b+(samples/4)*i,samples/4);
+				//for(int i=0;i<4;++i)
+				if(Pa_IsStreamStopped(pa))
+				{
+					//audio_thread_cb_struct s={.pa=pa,.b=b+(samples/4)*i,.fc=(samples/4)};
+					audio_thread_cb_struct s={.pa=pa,.b=b,.fc=(samples)};
+					pthread_t th;
+					pthread_create(&th,NULL,audio_thread_cb,&s);
+					//Pa_WriteStream(pa,b+(samples/4)*i,samples/4);
+				}
 
 				//Pa_StopStream(pa);
 				//Pa_CloseStream(pa);

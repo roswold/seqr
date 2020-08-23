@@ -1,10 +1,10 @@
 #!/bin/sh
 
-_this=raw2wav.sh
+_this=$(basename "$0")
 
 # Get input file
-if [ $# -lt 1 ]; then
-	echo "$_this: Usage: $_this <inputfile> [<outputfile>]"
+if [ $# -lt 1 ] || [ $1 = '--help' ]; then
+	echo "usage: $_this <inputfile> [<outputfile>]"
 	exit 1
 else
 	_inputfile=$1
