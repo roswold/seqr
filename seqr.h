@@ -82,3 +82,9 @@ int16_t sw(double freq,double offset,double samplerate,double amplitude);
 
 // Single-sample Noise wave oscillator
 int16_t ns(double freq,double offset,double samplerate,double amplitude);
+
+// Allocate seqr_data, initialize
+seqr_data*seqr_create(void);
+
+// Generate audio samples from internal sequence, synth data
+void seqr_synthesize(seqr_data*seqr);

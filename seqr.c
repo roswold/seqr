@@ -1,25 +1,11 @@
 #include<stdio.h>
 #include"seqr.h"
+#include"ui.h"
 
 // Entry
 int main(int argc,char**argv)
 {
-	seqr_data*seqr;
-
-	// seqr synth stuff
-	seqr=malloc(sizeof(seqr_data));
-	if(!seqr)printf("failed to allocate seqr_data\n"),exit(3);
-
-	srand(time(NULL));
-	seqr->samplerate=44100;
-	seqr->samples=seqr->samplerate;
-	seqr->fr=261;
-	seqr->a=11000;
-	seqr->bpm=120;
-	memset(seqr->seq,0,sizeof(Msg)*2*16);
-
-	// Allocate buffer for samples
-	seqr->b=malloc(sizeof(int16_t)*seqr->samples);
+	seqr_data*seqr=seqr_create();
 
 	// Parse command line options
 	for(int i=0;i<argc;++i)
@@ -33,24 +19,10 @@ int main(int argc,char**argv)
 	atexit(quit);
 
 	// ncurses setup
-	initscr();
-	start_color();
-	use_default_colors();
-	curs_set(0);
-
-	// ncurses colors
-	enum{C_TRANSPARENT=-1,C_CYAN=1,C_GREEN,C_YELLOW,C_WHITE,C_MAGENTA,C_BLUE,C_HILITE};
-	init_pair(1,COLOR_CYAN,C_TRANSPARENT);
-	init_pair(2,COLOR_GREEN,C_TRANSPARENT);
-	init_pair(3,COLOR_YELLOW,C_TRANSPARENT);
-	init_pair(4,COLOR_WHITE,C_TRANSPARENT);
-	init_pair(5,COLOR_MAGENTA,C_TRANSPARENT);
-	init_pair(6,COLOR_BLUE,C_TRANSPARENT);
-	init_pair(7,COLOR_BLACK,COLOR_WHITE);
+	ui_data*ui=ui_create();
 
 	if(!seqr->b)
 	{
-		//gotoxy(1,1);
 		mvprintw(1,1,"failed to load buffer\n");
 		exit(1);
 	}
@@ -63,7 +35,6 @@ int main(int argc,char**argv)
 	// Tracker screen
 	while(true)
 	{
-
 
 		// Draw tracker note data/UI
 		for(int i=seqr->patternoffset;i<seqr->patternoffset+16;i++)
@@ -162,14 +133,7 @@ int main(int argc,char**argv)
 				if(key==' ')
 				{
 
-					// Synthesize audio data
-					for(int i=0,j=0;i<16;i++)
-						for(int key=0;key<2000;key++)
-							seqr->b[j]=	(sn(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->a:0)+
-										sq(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->a:0)+
-										tr(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->a:0)+
-										sw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->a:0)
-										)/4.0,++j;
+					seqr_synthesize(seqr);
 
 					// Write synthesized output to stream
 					{
@@ -181,27 +145,22 @@ int main(int argc,char**argv)
 					sprintf(seqr->info,"Playing stream");
 				}
 
-				if(key=='R')//export raw data
+				// Export raw data
+				if(key=='R')
 				{
 					FILE *f=fopen("audio.dat","wb");
 					if(!f)exit(8);
 
 					// Synthesize data
-					for(int i=0,j=0;i<16;i++)
-						for(int key=0;key<2000;key++)
-							seqr->b[j]=	(sn(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->a:0)+
-										sq(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->a:0)+
-										tr(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->a:0)+
-										sw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->a:0)
-										)/4.0,++j;
-
+					seqr_synthesize(seqr);
 
 					fwrite(seqr->b,sizeof(int16_t),seqr->samples,f);
 					sprintf(seqr->info,"Wrote raw audio to \"audio.dat\"");
 					fclose(f);
 				}
 
-				if(key=='X')//export WAV file
+				// Export WAV file
+				if(key=='X')
 				{
 					// Wave file header tailored for this purpose
 					uint8_t hdr[]={0x52, 0x49, 0x46, 0x46, 0xac, 0x58, 0x01, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20,
@@ -213,15 +172,9 @@ int main(int argc,char**argv)
 					if(!f)exit(8);
 
 					// Synthesize data
-					for(int i=0,j=0;i<16;i++)
-						for(int key=0;key<2000;key++)
-							seqr->b[j]=	(sn(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->a:0)+
-										sq(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->a:0)+
-										tr(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->a:0)+
-										sw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->a:0)
-										)/4.0,++j;
+					seqr_synthesize(seqr);
 
-					fwrite(hdr,1,44,f);//write WAV header
+					fwrite(hdr,1,44,f);		// Write WAV header
 					fwrite(seqr->b,sizeof(int16_t),seqr->samples,f);
 					sprintf(seqr->info,"Exported \"seqexport.wav\"");
 					fclose(f);
@@ -306,6 +259,10 @@ int main(int argc,char**argv)
 	if(seqr->b)
 		free(seqr->b);
 	// These called by atexit:
+	if(seqr)
+		free(seqr);
+	if(ui)
+		free(ui);
 	//Pa_Terminate();
 	//endwin();
 }
@@ -358,4 +315,36 @@ int16_t sw(double f,double o,double r,double a)
 int16_t ns(double f,double o,double r,double a)
 {
 	return (double)a/2.0L-fmod(rand(),a);
+}
+
+seqr_data*seqr_create(void)
+{
+	seqr_data*seqr;
+
+	// seqr synth stuff
+	seqr=malloc(sizeof(seqr_data));
+	if(!seqr)printf("failed to allocate seqr_data\n"),exit(3);
+
+	srand(time(NULL));
+	seqr->samplerate=44100;
+	seqr->samples=seqr->samplerate;
+	seqr->fr=261;
+	seqr->a=11000;
+	seqr->bpm=120;
+	memset(seqr->seq,0,sizeof(Msg)*2*16);
+
+	// Allocate buffer for samples
+	seqr->b=malloc(sizeof(int16_t)*seqr->samples);
+	return seqr;
+}
+
+void seqr_synthesize(seqr_data*seqr)
+{
+	for(int i=0,j=0;i<16;i++)
+		for(int key=0;key<2000;key++)
+			seqr->b[j]=	(sn(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->a:0)+
+						sq(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->a:0)+
+						tr(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->a:0)+
+						sw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->a:0)
+						)/4.0,++j;
 }
