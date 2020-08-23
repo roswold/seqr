@@ -23,3 +23,6 @@ enum colors
 
 // Allocate, initialize ui_data 
 ui_data*ui_create(void);
+
+// Free ui_data resources
+void ui_close(ui_data*ui);

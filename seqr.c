@@ -5,35 +5,27 @@
 // Entry
 int main(int argc,char**argv)
 {
-	seqr_data*seqr=seqr_create();
+	ui_data*ui;
+	seqr_data*seqr;
+	int running=1;
 
 	// Parse command line options
 	for(int i=0;i<argc;++i)
-		if(strcmp(argv[i],"--help")==0 ||
-			strcmp(argv[i],"-h")==0)
-			puts("seqr version 0.0"),
-			exit(0);
+		if(strcmp(argv[i],"--help")==0 || strcmp(argv[i],"-h")==0)
+			puts("seqr version 0.0 [--help|-h]");
 
-	// Signal hander, atexit
+	// Initialize state
+	ui=ui_create();
+	seqr=seqr_create();
 	signal(SIGINT,sighandler);
-	atexit(quit);
-
-	// ncurses setup
-	ui_data*ui=ui_create();
-
-	if(!seqr->b)
-	{
-		mvprintw(1,1,"failed to load buffer\n");
-		exit(1);
-	}
 
 	// Portaudio setup
 	Pa_Initialize();
 	Pa_OpenDefaultStream(&seqr->pa,0,1,paInt16,44100,seqr->samples,
 		NULL,NULL);
 
-	// Tracker screen
-	while(true)
+	// Main loop
+	while(running)
 	{
 
 		// Draw tracker note data/UI
@@ -101,13 +93,17 @@ int main(int argc,char**argv)
 					else --seqr->channel;
 				}
 				if(key==KEY_RIGHT||key=='l')seqr->channel=(seqr->channel+1)%4;
-				if(key=='Q')exit(7);
+				if(key=='Q')
+				{
+					running=0;
+					break;
+				}
 
 				// Write file
 				if(key=='W')
 				{
 					FILE *f=fopen("seq.dat","wb");
-					if(!f)exit(7);
+					if(!f)break;
 					fwrite(seqr->seq,sizeof(seqr->seq),1,f);
 					//gotoxy(0,0);
 					sprintf(seqr->info,"Wrote \"seq.dat\"");
@@ -149,7 +145,7 @@ int main(int argc,char**argv)
 				if(key=='R')
 				{
 					FILE *f=fopen("audio.dat","wb");
-					if(!f)exit(8);
+					if(!f)break;
 
 					// Synthesize data
 					seqr_synthesize(seqr);
@@ -169,7 +165,7 @@ int main(int argc,char**argv)
 
 					// Generate, output samples
 					FILE *f=fopen("seqexport.wav","wb");
-					if(!f)exit(8);
+					if(!f)break;
 
 					// Synthesize data
 					seqr_synthesize(seqr);
@@ -256,27 +252,14 @@ int main(int argc,char**argv)
 		refresh();
 	}
 
-	if(seqr->b)
-		free(seqr->b);
-	// These called by atexit:
-	if(seqr)
-		free(seqr);
-	if(ui)
-		free(ui);
-	//Pa_Terminate();
-	//endwin();
-}
-
-void quit(void)
-{
-	Pa_Terminate();
-	endwin();
+quit:
+	seqr_close(seqr);
+	ui_close(ui);
 }
 
 void sighandler(int sig)
 {
-	if(sig==SIGINT)
-		exit(1);
+	if(sig==SIGINT);
 }
 
 void*audio_thread_cb(void*d)
@@ -292,27 +275,27 @@ void*audio_thread_cb(void*d)
 	return NULL;
 }
 
-int16_t sn(double f,double o,double r,double a)
+int16_t sine(double f,double o,double r,double a)
 {
 	return sin(((2.0L*3.14159265)/(r/f))*o)*(a/2.0L);
 }
 
-int16_t sq(double f,double o,double r,double a)
+int16_t square(double f,double o,double r,double a)
 {
 	return (int16_t)fmod(o,(r/f))<(r/f)/2?(a/2.0L):-(a/2.0L);
 }
 
-int16_t tr(double f,double o,double r,double a)
+int16_t triangle(double f,double o,double r,double a)
 {
 	return ((a*((r/f/2.0L)-(int16_t)fabs((int16_t)fmod((o+(r/f/4.0L)),(2*(r/f/2.0L)))-(r/f/2.0L)) ))/(r/f/2.0L))-(a/2.0L);
 }
 
-int16_t sw(double f,double o,double r,double a)
+int16_t saw(double f,double o,double r,double a)
 {
 	return fmod((double)(o+(int16_t)(r/f/2.0L)),((double)r/f))/((double)r/f)*(double)a-(a/2.0L);
 }
 
-int16_t ns(double f,double o,double r,double a)
+int16_t noise(double f,double o,double r,double a)
 {
 	return (double)a/2.0L-fmod(rand(),a);
 }
@@ -323,18 +306,28 @@ seqr_data*seqr_create(void)
 
 	// seqr synth stuff
 	seqr=malloc(sizeof(seqr_data));
-	if(!seqr)printf("failed to allocate seqr_data\n"),exit(3);
+	if(!seqr)
+	{
+		printf("failed to allocate seqr_data\n");
+		return NULL;
+	}
 
 	srand(time(NULL));
 	seqr->samplerate=44100;
 	seqr->samples=seqr->samplerate;
-	seqr->fr=261;
-	seqr->a=11000;
+	seqr->freq=261;
+	seqr->amplitude=11000;
 	seqr->bpm=120;
 	memset(seqr->seq,0,sizeof(Msg)*2*16);
 
 	// Allocate buffer for samples
 	seqr->b=malloc(sizeof(int16_t)*seqr->samples);
+	if(!seqr->b)
+	{
+		printf("failed to allocate seqr_data buffer\n");
+		free(seqr);
+		return NULL;
+	}
 	return seqr;
 }
 
@@ -342,9 +335,20 @@ void seqr_synthesize(seqr_data*seqr)
 {
 	for(int i=0,j=0;i<16;i++)
 		for(int key=0;key<2000;key++)
-			seqr->b[j]=	(sn(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->a:0)+
-						sq(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->a:0)+
-						tr(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->a:0)+
-						sw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->a:0)
+			seqr->b[j]=	(sine(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->amplitude:0)+
+						square(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->amplitude:0)+
+						triangle(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->amplitude:0)+
+						saw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->amplitude:0)
 						)/4.0,++j;
+}
+
+void seqr_close(seqr_data*seqr)
+{
+	if(seqr)
+		Pa_StopStream(seqr->pa);
+	Pa_Terminate();
+	if(seqr->b)
+		free(seqr->b);
+	if(seqr)
+		free(seqr);
 }

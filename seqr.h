@@ -31,21 +31,21 @@ typedef struct seqr_data
 	// Synth data
 	PaStream*pa;
 	int32_t audio_data[512];
-	uint32_t samplerate;//44100;
-	uint32_t samples;//samplerate;
-	double fr;//261;
-	double a;//11000;
-	int32_t bpm;//120;
+	uint32_t samplerate;
+	uint32_t samples;
+	double freq;
+	double amplitude;
+	int32_t bpm;
 
 	// Sequencer data
 	Msg seq[4][16];		// 4 Channels, 16 instructions/messages ('notes') per channel
-	uint32_t y;//0;
-	char info[64];//{0};
-	uint8_t channel;//0;
-	uint32_t patternoffset;//0;
+	uint32_t y;
+	char info[64];
+	uint8_t channel;
+	uint32_t patternoffset;
 
 	// Allocate buffer for samples
-	int16_t *b;//malloc(sizeof(int16_t)*samples);
+	int16_t *b;
 } seqr_data;
 
 // audio_thread_cb state
@@ -60,7 +60,7 @@ typedef struct audio_thread_cb_struct
 void*audio_thread_cb(void*d);
 
 // Exit program, free resources
-void quit(void);
+//void quit(void);
 
 // Exit on SIGINT
 void sighandler(int sig);
@@ -69,22 +69,25 @@ void sighandler(int sig);
 #define raisesemi(f,n) (f*pow(SEMITC,(n)))
 
 // Single-sample Sine wave oscillator
-int16_t sn(double freq,double offset,double samplerate,double amplitude);
+int16_t sine(double freq,double offset,double samplerate,double amplitude);
 
 // Single-sample Square wave oscillator
-int16_t sq(double freq,double offset,double samplerate,double amplitude);
+int16_t square(double freq,double offset,double samplerate,double amplitude);
 
 // Single-sample Triangle wave oscillator
-int16_t tr(double freq,double offset,double samplerate,double amplitude);
+int16_t triangle(double freq,double offset,double samplerate,double amplitude);
 
 // Single-sample Sawtooth wave oscillator
-int16_t sw(double freq,double offset,double samplerate,double amplitude);
+int16_t saw(double freq,double offset,double samplerate,double amplitude);
 
 // Single-sample Noise wave oscillator
-int16_t ns(double freq,double offset,double samplerate,double amplitude);
+int16_t noise(double freq,double offset,double samplerate,double amplitude);
 
 // Allocate seqr_data, initialize
 seqr_data*seqr_create(void);
+
+// Free seqr resources
+void seqr_close(seqr_data*seqr);
 
 // Generate audio samples from internal sequence, synth data
 void seqr_synthesize(seqr_data*seqr);

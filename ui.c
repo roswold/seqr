@@ -19,3 +19,9 @@ ui_data*ui_create(void)
 	init_pair(7,COLOR_BLACK,COLOR_WHITE);
 	return ui;
 }
+
+void ui_close(ui_data*ui)
+{
+	endwin();
+	if(ui)free(ui);
+}
