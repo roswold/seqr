@@ -14,13 +14,13 @@ node*node_create(node*head,int value)
 	return n;
 }
 
-node*node_append(node*head,int value)
+node*list_append(node*head,int value)
 {
 	while(head->next)head=head->next;
 	return head->next=node_create(head,value);
 }
 
-void node_print(node*head)
+void list_print(node*head)
 {
 	while(head)
 	{
@@ -31,7 +31,7 @@ void node_print(node*head)
 	puts("");
 }
 
-void node_print_note(node*head,char**notes)
+void list_print_note(node*head,char**notes)
 {
 	while(head)
 	{
@@ -42,7 +42,7 @@ void node_print_note(node*head,char**notes)
 	puts("");
 }
 
-int node_length(node*head)
+int list_length(node*head)
 {
 	int len=0;
 	while(head)

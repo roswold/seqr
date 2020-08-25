@@ -57,7 +57,7 @@ typedef struct audio_thread_cb_struct
 } audio_thread_cb_struct;
 
 // Callback to play audio in seconday thread
-void*audio_thread_cb(void*d);
+void*seqr_audio_thread_cb(void*d);
 
 // Exit program, free resources
 //void quit(void);
@@ -99,3 +99,18 @@ void seqr_kb(seqr_data*seqr,ui_data*ui);
 
 // Generate audio samples from internal sequence, synth data
 void seqr_synthesize(seqr_data*seqr);
+
+// Edit seqr data file
+void seqr_edit_file(seqr_data*seqr,char*fn);
+
+// Write seqr data file
+void seqr_write_file(seqr_data*seqr,char*fn);
+
+// Synthesize and play audio data
+void seqr_play(seqr_data*seqr);
+
+// Synthesize raw audio data and write to file
+void seqr_write_raw_file(seqr_data*seqr,char*fn);
+
+// Synthesize and write to WAV file along with WAV header
+void seqr_export(seqr_data*seqr,char*fn);

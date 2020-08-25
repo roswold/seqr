@@ -1,4 +1,5 @@
 #pragma once
+#include<stdlib.h>
 
 typedef struct node
 {
@@ -7,12 +8,17 @@ typedef struct node
 } node;
 
 // Create node
+#define list_create(x) node_create(NULL,x)
 node*node_create(node*head,int value);
+
 // Append to end of list
-node*node_append(node*head,int value);
+node*list_append(node*head,int value);
+
 // Print all nodes to stdout
-void node_print(node*head);
+void list_print(node*head);
+
 // Print corresponding element in notes from node values
-void node_print_note(node*head,char**notes);
+void list_print_note(node*head,char**notes);
+
 // Traverse list, return length in nodes
-int node_length(node*head);
+int list_length(node*head);
