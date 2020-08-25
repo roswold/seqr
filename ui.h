@@ -1,11 +1,16 @@
+#pragma once
 #include<ncurses.h>
 #include<stdlib.h>
+#include<pthread.h>
 #include<stdio.h>
 
 // Struct to define UI information using ncurses
 typedef struct ui_data
 {
 	WINDOW*w;
+	int note;
+	int channel;
+	int running;
 } ui_data;
 
 // ncurses colors enum

@@ -1,3 +1,4 @@
+#pragma once
 #include<portaudio.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -9,6 +10,7 @@
 #include<math.h>
 #include<pthread.h>
 #include<time.h>
+#include"ui.h"
 //#include<mmsystem.h>
 
 #if defined(_WIN32) || defined(__CYGWIN__)
@@ -32,20 +34,18 @@ typedef struct seqr_data
 	PaStream*pa;
 	int32_t audio_data[512];
 	uint32_t samplerate;
-	uint32_t samples;
-	double freq;
-	double amplitude;
-	int32_t bpm;
+	uint32_t number_of_samples;
+	double volume;
+	int notes_per_pattern;
 
 	// Sequencer data
-	Msg seq[4][16];		// 4 Channels, 16 instructions/messages ('notes') per channel
-	uint32_t y;
-	char info[64];
-	uint8_t channel;
+	Msg seq[4][32];		// 4 Channels, 16 instructions/messages ('notes') per channel
+	char info[128];
 	uint32_t patternoffset;
 
-	// Allocate buffer for samples
-	int16_t *b;
+	// Misc
+	int16_t *b;				// Buffer for samples
+	pthread_t play_thread;	// Used to do output in another thread
 } seqr_data;
 
 // audio_thread_cb state
@@ -88,6 +88,14 @@ seqr_data*seqr_create(void);
 
 // Free seqr resources
 void seqr_close(seqr_data*seqr);
+
+// Draw notes
+void seqr_drawnotes(seqr_data*seqr,ui_data*ui);
+
+// Draw UI
+void seqr_drawui(seqr_data*seqr,ui_data*ui);
+
+void seqr_kb(seqr_data*seqr,ui_data*ui);
 
 // Generate audio samples from internal sequence, synth data
 void seqr_synthesize(seqr_data*seqr);

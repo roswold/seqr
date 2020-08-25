@@ -9,6 +9,9 @@ ui_data*ui_create(void)
 	start_color();
 	use_default_colors();
 	curs_set(0);
+	ui->note=0;
+	ui->channel=0;
+	ui->running=1;
 
 	init_pair(1,COLOR_CYAN,C_TRANSPARENT);
 	init_pair(2,COLOR_GREEN,C_TRANSPARENT);

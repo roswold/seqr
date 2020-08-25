@@ -1,6 +1,6 @@
 CFLAGS= -Wfatal-errors
 LDFLAGS= -lportaudio -lm -lpthread -pthread
-OBJS= seqr.o ui.o
+OBJS= seqr.o ui.o list.o
 
 # OS Specific
 ifeq ($(OS),Windows_NT)
