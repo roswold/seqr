@@ -1,8 +1,7 @@
-all: seqr
-seqr: src/seqr
-	cp src/seqr .
-src/seqr:
+all:
 	make -C src
+	cp src/seqr .
 clean:
 	make clean -C src
 	$(RM) seqr
+.PHONY: all

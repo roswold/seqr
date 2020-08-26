@@ -74,6 +74,12 @@ seqr_data*seqr_create(void)
 		free(seqr);
 		return NULL;
 	}
+
+	// Portaudio setup
+	Pa_Initialize();
+	Pa_OpenDefaultStream(&seqr->pa,0,1,paInt16,44100,seqr->number_of_samples,
+		NULL,NULL);
+
 	return seqr;
 }
 
@@ -352,6 +358,11 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 
 		case 'p':
 			freq=659;//e5
+			break;
+
+		// Clear note
+		case 'a':
+			seqr->seq[ui->channel][ui->note].msg=0;
 			break;
 
 		default:

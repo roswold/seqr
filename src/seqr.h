@@ -95,6 +95,7 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui);
 // Draw UI
 void seqr_drawui(seqr_data*seqr,ui_data*ui);
 
+// Get, process keyboard input
 void seqr_kb(seqr_data*seqr,ui_data*ui);
 
 // Generate audio samples from internal sequence, synth data
