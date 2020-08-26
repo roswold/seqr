@@ -114,3 +114,6 @@ void seqr_write_raw_file(seqr_data*seqr,char*fn);
 
 // Synthesize and write to WAV file along with WAV header
 void seqr_export(seqr_data*seqr,char*fn);
+
+// Get, process keyboard input
+void seqr_kb(seqr_data*seqr,ui_data*ui);
