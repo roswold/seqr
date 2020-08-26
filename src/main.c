@@ -1,7 +1,12 @@
 #include<stdio.h>
-#include<ncurses.h>
 #include"seqr.h"
 #include"ui.h"
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+#	include<pdcurses.h>
+#else
+#	include<ncurses.h>
+#endif
 
 // Entry
 int main(int argc,char**argv)

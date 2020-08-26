@@ -1,8 +1,13 @@
 #pragma once
-#include<ncurses.h>
 #include<stdlib.h>
 #include<pthread.h>
 #include<stdio.h>
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+#	include<pdcurses.h>
+#else
+#	include<ncurses.h>
+#endif
 
 // Struct to define UI information using ncurses
 typedef struct ui_data
