@@ -2,7 +2,7 @@
 # seqr
 ## Curses-based synth &amp; tracker/sequencer with 5 waveforms, 4 channels
 
-Shift+X   Export wave file, using wavhdr.dat for first 44 bytes
+Shift+X   Export wave file
 
 Shift+R   Write raw audio data without WAV header
 
