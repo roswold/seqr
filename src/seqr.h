@@ -23,8 +23,9 @@ typedef struct Msg
 {
 	uint32_t msg,p1,p2;
 } Msg;
-#define MSG_OFF	0x00
-#define MSG_ON	0x01
+#define MSG_NOP	0x00
+#define MSG_OFF	0x80
+#define MSG_ON	0x90
 
 // Struct to define seqr internal state
 typedef struct seqr_data
@@ -66,8 +67,11 @@ void*seqr_audio_thread_cb(void*d);
 // Exit on SIGINT
 void sighandler(int sig);
 
-#define SEMITC pow(2,1/12.0)
-#define raisesemi(f,n) (f*pow(SEMITC,(n)))
+// Helpful macros
+//#define semitone					pow(2,1/12.0)
+#define semitone					1.0594630943592953
+#define raisesemi(freq,num_semi)	(freq*pow(semitone,(num_semi)))
+#define midi2freq(key)				raisesemi(27.5L,(key-21));
 
 // Single-sample Sine wave oscillator
 int16_t sine(double freq,double offset,double samplerate,double amplitude);

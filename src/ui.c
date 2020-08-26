@@ -6,6 +6,7 @@ ui_data*ui_create(void)
 	ui_data*ui=(ui_data*)malloc(sizeof(ui_data));
 	// ncurses setup
 	ui->w=initscr();
+	keypad(ui->w, TRUE);
 	start_color();
 	use_default_colors();
 	curs_set(0);

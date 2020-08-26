@@ -65,7 +65,15 @@ seqr_data*seqr_create(void)
 	//seqr->bpm=120;
 	seqr->notes_per_pattern=16;
 	seqr->number_of_channels=4;
+
+	// Allocate memory for sequence data (notes, channels, ...)
 	seqr->seq=(Msg*)malloc(sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern);
+	if(!seqr->seq)
+	{
+		printf("failed to allocate seqr_data sequence buffer\n");
+		free(seqr);
+		return NULL;
+	}
 	memset(seqr->seq,0,sizeof(Msg)*seqr->notes_per_pattern);
 
 	// Allocate buffer for samples
@@ -89,10 +97,10 @@ void seqr_synthesize(seqr_data*seqr)
 {
 	for(int i=0,j=0;i<seqr->notes_per_pattern;i++)
 		for(int key=0;key<2000;key++)
-			seqr->b[j]=	(sine(seqr->seq[0*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[0*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
-						square(seqr->seq[1*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[1*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
-						triangle(seqr->seq[2*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[2*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
-						saw(seqr->seq[3*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[3*seqr->notes_per_pattern+i].msg?seqr->volume:0)
+			seqr->b[j]=	(sine(seqr->seq[0*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[0*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
+						square(seqr->seq[1*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[1*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
+						triangle(seqr->seq[2*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[2*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
+						saw(seqr->seq[3*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[3*seqr->notes_per_pattern+i].p1?seqr->volume:0)
 						)/4.0,++j;
 }
 
@@ -105,16 +113,25 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 		const int vert_space=8;
 		int y_pos=0;
 		int hilite=ui->note==i;
+		Msg*m=&seqr->seq[ui->channel*seqr->notes_per_pattern+i];
 
+		// We need to sort of 'disassemble' the message queue here
 		if(hilite)attron(COLOR_PAIR(C_HILITE));
 
 		if(!hilite)attron(COLOR_PAIR(C_GREEN));
-		mvprintw(i,y_pos,"%u",i);
+		mvprintw(i,y_pos,"%0.2X",i);
 		if(!hilite)attroff(COLOR_PAIR(C_GREEN));
 
-		if(!hilite)attron(COLOR_PAIR(C_WHITE));
-		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].msg);
-		if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+		if(m->msg!=MSG_NOP)
+		{
+			if(!hilite)attron(COLOR_PAIR(C_WHITE));
+			mvprintw(i,y_pos+=vert_space,"%u",m->p1);
+			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+		}
+		else
+		{
+			mvprintw(i,y_pos+=vert_space,"-");
+		}
 
 		if(!hilite)attron(COLOR_PAIR(C_BLUE));
 		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p1);
@@ -234,6 +251,7 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 {
 	int key=getch();
 	uint32_t freq=0;
+	Msg*m;
 
 	switch(key)
 	{
@@ -366,7 +384,9 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 
 		// Clear note
 		case 'a':
-			seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].msg=0;
+			m=&seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note];
+			m->msg=MSG_NOP;
+			m->p1=0;
 			break;
 
 		default:
@@ -376,5 +396,10 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 	// Mark key as read
 	key=-1;
 	if(freq!=0)
-		seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].msg=freq;
+	{
+			m=&seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note];
+			m->msg=MSG_OFF;
+			m->p1=freq;
+			//seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].p1=freq;
+	}
 }
