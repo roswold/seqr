@@ -95,13 +95,14 @@ seqr_data*seqr_create(void)
 
 void seqr_synthesize(seqr_data*seqr)
 {
+	// Add each channel, divide by number of channels
 	for(int i=0,j=0;i<seqr->notes_per_pattern;i++)
 		for(int key=0;key<2000;key++)
-			seqr->b[j]=	(sine(seqr->seq[0*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[0*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
-						square(seqr->seq[1*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[1*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
-						triangle(seqr->seq[2*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[2*seqr->notes_per_pattern+i].p1?seqr->volume:0)+
-						saw(seqr->seq[3*seqr->notes_per_pattern+i].p1,j,seqr->samplerate,seqr->seq[3*seqr->notes_per_pattern+i].p1?seqr->volume:0)
-						)/4.0,++j;
+			seqr->b[j]=	(sine(midi2freq(seqr->seq[0*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[0*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
+						square(midi2freq(seqr->seq[1*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[1*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
+						triangle(midi2freq(seqr->seq[2*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[2*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
+						saw(midi2freq(seqr->seq[3*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[3*seqr->notes_per_pattern+i].p1)?seqr->volume:0)
+						)/(double)seqr->number_of_channels,++j;
 }
 
 void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
@@ -125,7 +126,7 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 		if(m->msg!=MSG_NOP)
 		{
 			if(!hilite)attron(COLOR_PAIR(C_WHITE));
-			mvprintw(i,y_pos+=vert_space,"%u",m->p1);
+			mvprintw(i,y_pos+=vert_space,"%s",seqr_getnotename(m->p1));
 			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
 		}
 		else
@@ -250,7 +251,7 @@ void seqr_export(seqr_data*seqr,char*fn)
 void seqr_kb(seqr_data*seqr,ui_data*ui)
 {
 	int key=getch();
-	uint32_t freq=0;
+	int note=0;
 	Msg*m;
 
 	switch(key)
@@ -313,73 +314,73 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 			seqr_export(seqr,"seqexport.wav");
 			break;
 
-		// Piano keyboard layout for comp kb
+		// ----- Piano keyboard layout for comp kb -----
 		case 'z':
-			freq=131;//c3
+			note=48; //c3
 			break;
 
 		case 'x':
-			freq=147;//d3
+			note=50; //d3
 			break;
 
 		case 'c':
-			freq=165;//e3
+			note=52; //e3
 			break;
 
 		case 'v':
-			freq=175;//f3
+			note=53; //f3
 			break;
 
 		case 'b':
-			freq=196;//g3
+			note=55; //g3
 			break;
 
 		case 'n':
-			freq=220;//a3
+			note=57; //a3
 			break;
 
 		case 'm':
-			freq=247;//b3
+			note=59; //b3
 			break;
 
 		case 'q':
-			freq=262;//c4
+			note=60; //c4
 			break;
 
 		case 'w':
-			freq=294;//d4
+			note=62; //d4
 			break;
 
 		case 'e':
-			freq=330;//e4
+			note=64; //e4
 			break;
 
 		case 'r':
-			freq=349;//f4
+			note=65; //f4
 			break;
 
 		case 't':
-			freq=392;//g4
+			note=67; //g4
 			break;
 
 		case 'y':
-			freq=440;//a4
+			note=69; //a4
 			break;
 
 		case 'u':
-			freq=494;//b4
+			note=71; //b4
 			break;
 
 		case 'i':
-			freq=523;//c5
+			note=72; //c5
 			break;
 
 		case 'o':
-			freq=587;//d5
+			note=74; //d5
 			break;
 
 		case 'p':
-			freq=659;//e5
+			note=76; //e5
 			break;
 
 		// Clear note
@@ -395,11 +396,26 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 
 	// Mark key as read
 	key=-1;
-	if(freq!=0)
+
+	// Enter key into pattern
+	if(note!=0)
 	{
 			m=&seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note];
 			m->msg=MSG_OFF;
-			m->p1=freq;
-			//seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].p1=freq;
+			m->p1=note;
 	}
+}
+
+char*seqr_getnotename(int midi_key)
+{
+	static char name[8]={0};
+	static char*base[]=
+	{
+		"A","A#","B","C",
+		"C#","D","D#","E",
+		"F","F#","G","G#",
+	};
+
+	sprintf(name,"%s%d",base[(midi_key-21)%12],((midi_key-21)/12)%128);
+	return name;
 }

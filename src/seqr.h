@@ -71,7 +71,7 @@ void sighandler(int sig);
 //#define semitone					pow(2,1/12.0)
 #define semitone					1.0594630943592953
 #define raisesemi(freq,num_semi)	(freq*pow(semitone,(num_semi)))
-#define midi2freq(key)				raisesemi(27.5L,(key-21));
+#define midi2freq(key)				raisesemi(27.5,(key-21))
 
 // Single-sample Sine wave oscillator
 int16_t sine(double freq,double offset,double samplerate,double amplitude);
@@ -123,3 +123,6 @@ void seqr_export(seqr_data*seqr,char*fn);
 
 // Get, process keyboard input
 void seqr_kb(seqr_data*seqr,ui_data*ui);
+
+// Convert MIDI number to human-readable note name
+char*seqr_getnotename(int midi_key);
