@@ -34,11 +34,13 @@ typedef struct seqr_data
 	int32_t audio_data[512];
 	uint32_t samplerate;
 	uint32_t number_of_samples;
+	uint32_t number_of_channels;
+	uint32_t notes_per_pattern;
 	double volume;
-	int notes_per_pattern;
 
 	// Sequencer data
-	Msg seq[4][32];		// 4 Channels, 16 instructions/messages ('notes') per channel
+	//Msg seq[4][32];		// 4 Channels, 16 instructions/messages ('notes') per channel
+	Msg*seq;
 	char info[128];
 	uint32_t patternoffset;
 

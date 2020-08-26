@@ -64,7 +64,9 @@ seqr_data*seqr_create(void)
 	seqr->volume=11000;
 	//seqr->bpm=120;
 	seqr->notes_per_pattern=16;
-	memset(seqr->seq,0,sizeof(Msg)*2*seqr->notes_per_pattern);
+	seqr->number_of_channels=4;
+	seqr->seq=(Msg*)malloc(sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern);
+	memset(seqr->seq,0,sizeof(Msg)*seqr->notes_per_pattern);
 
 	// Allocate buffer for samples
 	seqr->b=malloc(sizeof(int16_t)*seqr->number_of_samples);
@@ -87,10 +89,10 @@ void seqr_synthesize(seqr_data*seqr)
 {
 	for(int i=0,j=0;i<seqr->notes_per_pattern;i++)
 		for(int key=0;key<2000;key++)
-			seqr->b[j]=	(sine(seqr->seq[0][i].msg,j,seqr->samplerate,seqr->seq[0][i].msg?seqr->volume:0)+
-						square(seqr->seq[1][i].msg,j,seqr->samplerate,seqr->seq[1][i].msg?seqr->volume:0)+
-						triangle(seqr->seq[2][i].msg,j,seqr->samplerate,seqr->seq[2][i].msg?seqr->volume:0)+
-						saw(seqr->seq[3][i].msg,j,seqr->samplerate,seqr->seq[3][i].msg?seqr->volume:0)
+			seqr->b[j]=	(sine(seqr->seq[0*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[0*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
+						square(seqr->seq[1*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[1*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
+						triangle(seqr->seq[2*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[2*seqr->notes_per_pattern+i].msg?seqr->volume:0)+
+						saw(seqr->seq[3*seqr->notes_per_pattern+i].msg,j,seqr->samplerate,seqr->seq[3*seqr->notes_per_pattern+i].msg?seqr->volume:0)
 						)/4.0,++j;
 }
 
@@ -111,15 +113,15 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 		if(!hilite)attroff(COLOR_PAIR(C_GREEN));
 
 		if(!hilite)attron(COLOR_PAIR(C_WHITE));
-		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel][i].msg);
+		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].msg);
 		if(!hilite)attroff(COLOR_PAIR(C_WHITE));
 
 		if(!hilite)attron(COLOR_PAIR(C_BLUE));
-		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel][i].p1);
+		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p1);
 		if(!hilite)attroff(COLOR_PAIR(C_BLUE));
 
 		if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
-		mvprintw(i,y_pos+=vert_space,"%u\n",seqr->seq[ui->channel][i].p2);
+		mvprintw(i,y_pos+=vert_space,"%u\n",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p2);
 		if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
 
 		if(hilite)attroff(COLOR_PAIR(C_HILITE));
@@ -131,6 +133,8 @@ void seqr_close(seqr_data*seqr)
 	if(seqr)
 		Pa_StopStream(seqr->pa);
 	Pa_Terminate();
+	if(seqr->seq)
+		free(seqr->seq);
 	if(seqr->b)
 		free(seqr->b);
 	if(seqr)
@@ -167,7 +171,7 @@ void seqr_edit_file(seqr_data*seqr,char*fn)
 		sprintf(seqr->info,"Failed to open \"%s\"",fn);
 	else
 	{
-		fread(seqr->seq,sizeof(seqr->seq),1,f);
+		fread(seqr->seq,sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern,1,f);
 		sprintf(seqr->info,"Opened \"%s\"",fn);
 		fclose(f);
 	}
@@ -177,7 +181,7 @@ void seqr_write_file(seqr_data*seqr,char*fn)
 {
 	FILE *f=fopen(fn,"wb");
 	if(!f)return;
-	fwrite(seqr->seq,sizeof(seqr->seq),1,f);
+	fwrite(seqr->seq,sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern,1,f);
 	sprintf(seqr->info,"Wrote \"%s\"",fn);
 	fclose(f);
 }
@@ -362,7 +366,7 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 
 		// Clear note
 		case 'a':
-			seqr->seq[ui->channel][ui->note].msg=0;
+			seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].msg=0;
 			break;
 
 		default:
@@ -372,5 +376,5 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 	// Mark key as read
 	key=-1;
 	if(freq!=0)
-		seqr->seq[ui->channel][ui->note].msg=freq;
+		seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note].msg=freq;
 }
