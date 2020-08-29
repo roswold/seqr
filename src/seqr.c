@@ -60,7 +60,7 @@ seqr_data*seqr_create(void)
 
 	srand(time(NULL));
 	seqr->samplerate=44100;
-	seqr->number_of_samples=seqr->samplerate;
+	seqr->number_of_samples=44100;
 	seqr->volume=11000;
 	//seqr->bpm=120;
 	seqr->notes_per_pattern=16;
@@ -80,14 +80,14 @@ seqr_data*seqr_create(void)
 	seqr->b=malloc(sizeof(int16_t)*seqr->number_of_samples);
 	if(!seqr->b)
 	{
-		printf("failed to allocate seqr_data buffer\n");
+		printf("failed to allocate seqr_data sample buffer\n");
 		free(seqr);
 		return NULL;
 	}
 
 	// Portaudio setup
 	Pa_Initialize();
-	Pa_OpenDefaultStream(&seqr->pa,0,1,paInt16,44100,seqr->number_of_samples,
+	Pa_OpenDefaultStream(&seqr->pa,0,1,paInt16,seqr->samplerate,seqr->number_of_samples,
 		NULL,NULL);
 
 	return seqr;
@@ -120,34 +120,43 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 		if(hilite)attron(COLOR_PAIR(C_HILITE));
 
 		if(!hilite)attron(COLOR_PAIR(C_GREEN));
-		mvprintw(i,y_pos,"%0.2X",i);
+		mvprintw(i+1,y_pos+1,"%0.2X",i);
 		if(!hilite)attroff(COLOR_PAIR(C_GREEN));
 
 		if(m->msg!=MSG_NOP)
 		{
 			if(!hilite)attron(COLOR_PAIR(C_WHITE));
-			mvprintw(i,y_pos+=vert_space,"%s",seqr_getnotename(m->p1));
+			mvprintw(i+1,y_pos+=vert_space+1,"%s",seqr_getnotename(m->p1));
 			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
 		}
 		else
 		{
-			mvprintw(i,y_pos+=vert_space,"-");
+			mvprintw(i+1,y_pos+=vert_space+1,"-");
 		}
 
 		if(!hilite)attron(COLOR_PAIR(C_BLUE));
-		mvprintw(i,y_pos+=vert_space,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p1);
+		mvprintw(i+1,y_pos+=vert_space+1,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p1);
 		if(!hilite)attroff(COLOR_PAIR(C_BLUE));
 
 		if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
-		mvprintw(i,y_pos+=vert_space,"%u\n",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p2);
+		mvprintw(i+1,y_pos+=vert_space+1,"%u\n",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p2);
 		if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
 
 		if(hilite)attroff(COLOR_PAIR(C_HILITE));
 	}
 }
 
-void seqr_close(seqr_data*seqr)
+void seqr_close(seqr_data*seqr,ui_data*ui)
 {
+	// Post message while we wait to close
+	sprintf(seqr->info,"Closing audio");
+	clear();
+	seqr_drawui(seqr,ui);
+	seqr_drawnotes(seqr,ui);
+	refresh();
+
+	// Join audio thread, free resources
+	pthread_join(seqr->play_thread,NULL);
 	if(seqr)
 		Pa_StopStream(seqr->pa);
 	Pa_Terminate();
@@ -161,25 +170,26 @@ void seqr_close(seqr_data*seqr)
 
 void seqr_drawui(seqr_data*seqr,ui_data*ui)
 {
-	int x_pos=17;
+	int y_pos=getmaxy(ui->w)-6;
 	//setBackgroundColor(BLACK);
 	attron(COLOR_PAIR(C_CYAN));
 	char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
-	mvprintw(x_pos++,0,"Channel:%u%s\n",ui->channel,chan_name[ui->channel]);
+	mvprintw(y_pos++,1,"Channel:%u%s\n",ui->channel,chan_name[ui->channel]);
 	attroff(COLOR_PAIR(C_CYAN));
 
 	attron(COLOR_PAIR(C_WHITE));
-	mvprintw(x_pos++,0,"_Q_ Quit\t_W_ Write\t_E_ Edit");
-	mvprintw(x_pos++,0,"_X_ Export\t_R_ Export Raw\tSPACE Play");
+	mvprintw(y_pos++,1,"_Q_ Quit\t_W_ Write\t_E_ Edit");
+	mvprintw(y_pos++,1,"_X_ Export\t_R_ Export Raw\tSPACE Play");
 	attroff(COLOR_PAIR(C_WHITE));
 
 	// Draw info string if not empty
 	if(strcmp(seqr->info,""))
 	{
 		attron(COLOR_PAIR(C_MAGENTA));
-		mvprintw(x_pos++,0,"\n[%s]",seqr->info);
+		mvprintw(++y_pos,1,"[%s]",seqr->info);
 		attroff(COLOR_PAIR(C_MAGENTA));
 	}
+	box(ui->w,'|','-');
 }
 
 void seqr_edit_file(seqr_data*seqr,char*fn)
@@ -246,6 +256,20 @@ void seqr_export(seqr_data*seqr,char*fn)
 	fwrite(seqr->b,sizeof(int16_t),seqr->number_of_samples,f);
 	sprintf(seqr->info,"Exported \"%s\"",fn);
 	fclose(f);
+}
+
+char*seqr_getnotename(int midi_key)
+{
+	static char name[8]={0};
+	static char*base[]=
+	{
+		"A","A#","B","C",
+		"C#","D","D#","E",
+		"F","F#","G","G#",
+	};
+
+	sprintf(name,"%s%d",base[(midi_key-21)%12],((midi_key-21)/12)%128);
+	return name;
 }
 
 void seqr_kb(seqr_data*seqr,ui_data*ui)
@@ -404,18 +428,4 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 			m->msg=MSG_OFF;
 			m->p1=note;
 	}
-}
-
-char*seqr_getnotename(int midi_key)
-{
-	static char name[8]={0};
-	static char*base[]=
-	{
-		"A","A#","B","C",
-		"C#","D","D#","E",
-		"F","F#","G","G#",
-	};
-
-	sprintf(name,"%s%d",base[(midi_key-21)%12],((midi_key-21)/12)%128);
-	return name;
 }

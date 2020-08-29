@@ -26,6 +26,8 @@ int main(int argc,char**argv)
 	ui=ui_create();
 	seqr=seqr_create();
 	signal(SIGINT,sighandler);
+	pthread_create(&seqr->play_thread,NULL,
+			seqr_audio_thread_cb,seqr); // Create thread so we can join it
 
 	// Main loop
 	while(ui->running)
@@ -44,6 +46,6 @@ int main(int argc,char**argv)
 	}
 
 	// Exit, clear resources
-	seqr_close(seqr);
+	seqr_close(seqr,ui);
 	ui_close(ui);
 }

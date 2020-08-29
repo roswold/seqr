@@ -92,7 +92,7 @@ int16_t noise(double freq,double offset,double samplerate,double amplitude);
 seqr_data*seqr_create(void);
 
 // Free seqr resources
-void seqr_close(seqr_data*seqr);
+void seqr_close(seqr_data*seqr,ui_data*ui);
 
 // Draw notes
 void seqr_drawnotes(seqr_data*seqr,ui_data*ui);
