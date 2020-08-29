@@ -1,6 +1,1 @@
-Implement dynamic memory management for MIDI commands (Msg structs)
-	* e.g., vector, linked list...
-		--> Using vectors would be as simple as realloc!
-	* Integrate that with current code
-Represent all channels on screen at once
 Allow multiple patterns of channels

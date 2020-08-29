@@ -111,38 +111,44 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 	// Draw tracker note data/UI
 	for(int i=0;i<seqr->notes_per_pattern;i++)
 	{
-		const int vert_space=8;
-		int y_pos=0;
-		int hilite=ui->note==i;
-		Msg*m=&seqr->seq[ui->channel*seqr->notes_per_pattern+i];
+		const int horiz_space=4;
+		const int chan_width=16;
+		int hilite_i=ui->note==i;
 
-		// We need to sort of 'disassemble' the message queue here
-		if(hilite)attron(COLOR_PAIR(C_HILITE));
+		attron(COLOR_PAIR(C_GREEN));
+		mvprintw(i+1,1,"%0.2X",i);
+		attroff(COLOR_PAIR(C_GREEN));
 
-		if(!hilite)attron(COLOR_PAIR(C_GREEN));
-		mvprintw(i+1,y_pos+1,"%0.2X",i);
-		if(!hilite)attroff(COLOR_PAIR(C_GREEN));
-
-		if(m->msg!=MSG_NOP)
+		for(int j=0;j<seqr->number_of_channels;++j)
 		{
-			if(!hilite)attron(COLOR_PAIR(C_WHITE));
-			mvprintw(i+1,y_pos+=vert_space+1,"%s",seqr_getnotename(m->p1));
-			if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+			int hilite=hilite_i&&ui->channel==j;
+			int x_pos=j*chan_width;
+			Msg*m=&seqr->seq[j*seqr->notes_per_pattern+i];
+
+			// We need to sort of 'disassemble' the message queue here
+			if(hilite)attron(COLOR_PAIR(C_HILITE));
+
+			if(m->msg!=MSG_NOP)
+			{
+				if(!hilite)attron(COLOR_PAIR(C_WHITE));
+				mvprintw(i+1,x_pos+=horiz_space,"%s",seqr_getnotename(m->p1));
+				if(!hilite)attroff(COLOR_PAIR(C_WHITE));
+			}
+			else
+			{
+				mvprintw(i+1,x_pos+=horiz_space,"-");
+			}
+
+			if(!hilite)attron(COLOR_PAIR(C_BLUE));
+			mvprintw(i+1,x_pos+=horiz_space,"%u",seqr->seq[j*seqr->notes_per_pattern+i].p1);
+			if(!hilite)attroff(COLOR_PAIR(C_BLUE));
+
+			if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
+			mvprintw(i+1,x_pos+=horiz_space,"%u\n",seqr->seq[j*seqr->notes_per_pattern+i].p2);
+			if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
+
+			if(hilite)attroff(COLOR_PAIR(C_HILITE));
 		}
-		else
-		{
-			mvprintw(i+1,y_pos+=vert_space+1,"-");
-		}
-
-		if(!hilite)attron(COLOR_PAIR(C_BLUE));
-		mvprintw(i+1,y_pos+=vert_space+1,"%u",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p1);
-		if(!hilite)attroff(COLOR_PAIR(C_BLUE));
-
-		if(!hilite)attron(COLOR_PAIR(C_MAGENTA));
-		mvprintw(i+1,y_pos+=vert_space+1,"%u\n",seqr->seq[ui->channel*seqr->notes_per_pattern+i].p2);
-		if(!hilite)attroff(COLOR_PAIR(C_MAGENTA));
-
-		if(hilite)attroff(COLOR_PAIR(C_HILITE));
 	}
 }
 
