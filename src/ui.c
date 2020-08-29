@@ -20,7 +20,7 @@ ui_data*ui_create(void)
 	init_pair(4,COLOR_WHITE,C_TRANSPARENT);
 	init_pair(5,COLOR_MAGENTA,C_TRANSPARENT);
 	init_pair(6,COLOR_BLUE,C_TRANSPARENT);
-	init_pair(7,COLOR_BLACK,COLOR_WHITE);
+	init_pair(7,COLOR_BLACK,COLOR_YELLOW);
 	return ui;
 }
 
