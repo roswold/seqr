@@ -11,6 +11,7 @@
 #include<pthread.h>
 #include<time.h>
 #include"ui.h"
+#include"wav.h"
 
 #if defined(_WIN32) || defined(__CYGWIN__)
 #	include<pdcurses.h>
