@@ -116,21 +116,25 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 {
 	//int ui_y=0,ui_channel=0;
 	// Draw tracker note data/UI
+	// Iterate through each note
 	for(int i=0;i<seqr->notes_per_pattern;i++)
 	{
 		const int horiz_space=4;
 		const int chan_width=16;
+		const int cur_pattern=ui->pattern;
 		int hilite_i=ui->note==i;
 
 		attron(COLOR_PAIR(C_GREEN));
 		mvprintw(i+1,1,"%0.2X",i);
 		attroff(COLOR_PAIR(C_GREEN));
 
+		// Iterate through each channel
 		for(int j=0;j<seqr->number_of_channels;++j)
 		{
 			int hilite=hilite_i&&ui->channel==j;
 			int x_pos=j*chan_width;
-			Msg*m=&seqr->seq[ui->pattern*seqr->number_of_patterns+j*seqr->notes_per_pattern+i];
+			// Get first Msg of current pattern
+			Msg*m=seqr_getmsgat(seqr,ui,ui->pattern,j,i);
 
 			// We need to sort of 'disassemble' the message queue here
 			if(hilite)attron(COLOR_PAIR(C_HILITE));
@@ -213,7 +217,7 @@ void seqr_edit_file(seqr_data*seqr,char*fn)
 		sprintf(seqr->info,"Failed to open \"%s\"",fn);
 	else
 	{
-		fread(seqr->seq,sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern,1,f);
+		fread(seqr->seq,sizeof(Msg)*seqr->number_of_patterns*seqr->notes_per_pattern*seqr->number_of_channels,1,f);
 		sprintf(seqr->info,"Opened \"%s\"",fn);
 		fclose(f);
 	}
@@ -223,7 +227,7 @@ void seqr_write_file(seqr_data*seqr,char*fn)
 {
 	FILE *f=fopen(fn,"wb");
 	if(!f)return;
-	fwrite(seqr->seq,sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern,1,f);
+	fwrite(seqr->seq,sizeof(Msg)*seqr->number_of_patterns*seqr->notes_per_pattern*seqr->number_of_channels,1,f);
 	sprintf(seqr->info,"Wrote \"%s\"",fn);
 	fclose(f);
 }
@@ -286,10 +290,18 @@ char*seqr_getnotename(int midi_key)
 	return name;
 }
 
+Msg*seqr_getmsgat(seqr_data*seqr,ui_data*ui,int pat,int chan,int note)
+{
+	return &seqr->seq[
+		pat*seqr->number_of_channels*seqr->notes_per_pattern+
+		chan*seqr->notes_per_pattern+
+		note];
+}
+
 Msg*seqr_getcurmsg(seqr_data*seqr,ui_data*ui)
 {
 	return &seqr->seq[
-		ui->pattern*seqr->number_of_patterns*seqr->notes_per_pattern+
+		ui->pattern*seqr->number_of_channels*seqr->notes_per_pattern+
 		ui->channel*seqr->notes_per_pattern+
 		ui->note];
 }
