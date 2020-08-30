@@ -4,14 +4,17 @@
 ui_data*ui_create(void)
 {
 	ui_data*ui=(ui_data*)malloc(sizeof(ui_data));
+
 	// ncurses setup
 	ui->w=initscr();
 	keypad(ui->w, TRUE);
 	start_color();
 	use_default_colors();
 	curs_set(0);
+	noecho();
 	ui->note=0;
 	ui->channel=0;
+	ui->pattern=0;
 	ui->running=1;
 
 	init_pair(1,COLOR_CYAN,C_TRANSPARENT);

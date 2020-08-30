@@ -15,6 +15,7 @@ typedef struct ui_data
 	WINDOW*w;
 	int note;
 	int channel;
+	int pattern;
 	int running;
 } ui_data;
 

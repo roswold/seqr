@@ -1,1 +1,2 @@
 Allow multiple patterns of channels
+	* Index Msg array with [#patterns*pattern + #channels*channel + note]

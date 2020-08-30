@@ -36,6 +36,7 @@ typedef struct seqr_data
 	uint32_t samplerate;
 	uint32_t number_of_samples;
 	uint32_t number_of_channels;
+	uint32_t number_of_patterns;
 	uint32_t notes_per_pattern;
 	double volume;
 
@@ -126,3 +127,6 @@ void seqr_kb(seqr_data*seqr,ui_data*ui);
 
 // Convert MIDI number to human-readable note name
 char*seqr_getnotename(int midi_key);
+
+// Get currently selected note (Msg)
+Msg*seqr_getcurmsg(seqr_data*seqr,ui_data*ui);

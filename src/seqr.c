@@ -63,11 +63,18 @@ seqr_data*seqr_create(void)
 	seqr->number_of_samples=44100;
 	seqr->volume=11000;
 	//seqr->bpm=120;
+	seqr->number_of_patterns=1;
 	seqr->notes_per_pattern=16;
 	seqr->number_of_channels=4;
 
 	// Allocate memory for sequence data (notes, channels, ...)
-	seqr->seq=(Msg*)malloc(sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern);
+	seqr->seq=(Msg*)malloc(
+			sizeof(Msg)*
+			seqr->number_of_channels*
+			seqr->notes_per_pattern*
+			seqr->number_of_patterns*
+			seqr->notes_per_pattern
+			);
 	if(!seqr->seq)
 	{
 		printf("failed to allocate seqr_data sequence buffer\n");
@@ -123,7 +130,7 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 		{
 			int hilite=hilite_i&&ui->channel==j;
 			int x_pos=j*chan_width;
-			Msg*m=&seqr->seq[j*seqr->notes_per_pattern+i];
+			Msg*m=&seqr->seq[ui->pattern*seqr->number_of_patterns+j*seqr->notes_per_pattern+i];
 
 			// We need to sort of 'disassemble' the message queue here
 			if(hilite)attron(COLOR_PAIR(C_HILITE));
@@ -176,15 +183,16 @@ void seqr_close(seqr_data*seqr,ui_data*ui)
 
 void seqr_drawui(seqr_data*seqr,ui_data*ui)
 {
-	int y_pos=getmaxy(ui->w)-6;
+	int y_pos=getmaxy(ui->w)-7;
 	//setBackgroundColor(BLACK);
 	attron(COLOR_PAIR(C_CYAN));
 	char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
 	mvprintw(y_pos++,1,"Channel:%u%s\n",ui->channel,chan_name[ui->channel]);
+	mvprintw(y_pos++,1,"Pattern: %d",ui->pattern);
 	attroff(COLOR_PAIR(C_CYAN));
 
 	attron(COLOR_PAIR(C_WHITE));
-	mvprintw(y_pos++,1,"_Q_ Quit\t_W_ Write\t_E_ Edit");
+	mvprintw(y_pos++,1,"_Q_ Quit\t_W_ Write\t_E_ Edit\t_P_ Patterns");
 	mvprintw(y_pos++,1,"_X_ Export\t_R_ Export Raw\tSPACE Play");
 	attroff(COLOR_PAIR(C_WHITE));
 
@@ -278,6 +286,14 @@ char*seqr_getnotename(int midi_key)
 	return name;
 }
 
+Msg*seqr_getcurmsg(seqr_data*seqr,ui_data*ui)
+{
+	return &seqr->seq[
+		ui->pattern*seqr->number_of_patterns*seqr->notes_per_pattern+
+		ui->channel*seqr->notes_per_pattern+
+		ui->note];
+}
+
 void seqr_kb(seqr_data*seqr,ui_data*ui)
 {
 	int key=getch();
@@ -313,6 +329,19 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 			ui->channel=(ui->channel+1)%4;
 			break;
 
+		// Next pattern
+		case '+':
+		case '=':
+			ui->pattern=(ui->pattern+1)%seqr->number_of_patterns;
+			break;
+
+		// Previous pattern
+		case '-':
+			--ui->pattern;
+			if(ui->pattern<0)
+				ui->pattern=seqr->number_of_patterns-1;
+			break;
+
 		// Quit
 		case 'Q':
 			ui->running=0;
@@ -342,6 +371,39 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 		// Export WAV file
 		case 'X':
 			seqr_export(seqr,"seqexport.wav");
+			break;
+
+		// Change number of patterns
+		case 'P':
+			{
+				int x=-1;
+
+				// Get new number_of_patterns
+				while(x<1||x>16)
+				{
+					move(getmaxy(ui->w)-2,1);
+					clrtoeol();
+					mvprintw(getmaxy(ui->w)-2,1,"Number of patterns (1-16): ");
+					echo();
+					curs_set(2);
+					scanw("%d",&x);
+					noecho();
+					curs_set(0);
+				}
+
+				// Update number_of_patterns, reallocate memory
+				seqr->number_of_patterns=x;
+				if(ui->pattern>seqr->number_of_patterns)
+					ui->pattern=seqr->number_of_patterns-1;
+				else
+				{
+					seqr->seq=(Msg*)realloc(seqr->seq,sizeof(Msg)*seqr->number_of_channels*seqr->notes_per_pattern*seqr->number_of_patterns);
+					if(!seqr->seq)
+						printf("failed to allocate seqr_data sequence buffer\n");
+				}
+				sprintf(seqr->info,"Set # patterns to %d",seqr->number_of_patterns);
+				refresh();
+			}
 			break;
 
 		// ----- Piano keyboard layout for comp kb -----
@@ -415,7 +477,7 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 
 		// Clear note
 		case 'a':
-			m=&seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note];
+			m=seqr_getcurmsg(seqr,ui);
 			m->msg=MSG_NOP;
 			m->p1=0;
 			break;
@@ -427,11 +489,11 @@ void seqr_kb(seqr_data*seqr,ui_data*ui)
 	// Mark key as read
 	key=-1;
 
-	// Enter key into pattern
+	// Enter key into pattern when note entered
 	if(note!=0)
 	{
-			m=&seqr->seq[ui->channel*seqr->notes_per_pattern+ui->note];
-			m->msg=MSG_OFF;
-			m->p1=note;
+		m=seqr_getcurmsg(seqr,ui);
+		m->msg=MSG_OFF;
+		m->p1=note;
 	}
 }
