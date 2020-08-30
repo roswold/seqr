@@ -60,7 +60,7 @@ seqr_data*seqr_create(void)
 
 	srand(time(NULL));
 	seqr->samplerate=44100;
-	seqr->number_of_samples=44100;
+	seqr->number_of_samples=44100*2;
 	seqr->volume=11000;
 	//seqr->bpm=120;
 	seqr->number_of_patterns=1;
@@ -103,13 +103,14 @@ seqr_data*seqr_create(void)
 void seqr_synthesize(seqr_data*seqr)
 {
 	// Add each channel, divide by number of channels
-	for(int i=0,j=0;i<seqr->notes_per_pattern;i++)
-		for(int key=0;key<2000;key++)
-			seqr->b[j]=	(sine(midi2freq(seqr->seq[0*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[0*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
-						square(midi2freq(seqr->seq[1*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[1*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
-						triangle(midi2freq(seqr->seq[2*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[2*seqr->notes_per_pattern+i].p1)?seqr->volume:0)+
-						saw(midi2freq(seqr->seq[3*seqr->notes_per_pattern+i].p1),j,seqr->samplerate,midi2freq(seqr->seq[3*seqr->notes_per_pattern+i].p1)?seqr->volume:0)
-						)/(double)seqr->number_of_channels,++j;
+	for(int k=0,j=0;k<seqr->number_of_patterns;++k)
+		for(int i=0;i<seqr->notes_per_pattern;++i)
+			for(int key=0;key<2000;key++)
+				seqr->b[j]=	(sine(midi2freq(seqr_getmsgat(seqr,k,0,i)->p1),j,seqr->samplerate,midi2freq(seqr_getmsgat(seqr,k,0,k)->p1)?seqr->volume:0)+
+							square(midi2freq(seqr_getmsgat(seqr,k,1,i)->p1),j,seqr->samplerate,midi2freq(seqr_getmsgat(seqr,k,1,k)->p1)?seqr->volume:0)+
+							triangle(midi2freq(seqr_getmsgat(seqr,k,2,i)->p1),j,seqr->samplerate,midi2freq(seqr_getmsgat(seqr,k,2,k)->p1)?seqr->volume:0)+
+							saw(midi2freq(seqr_getmsgat(seqr,k,3,i)->p1),j,seqr->samplerate,midi2freq(seqr_getmsgat(seqr,k,3,k)->p1)?seqr->volume:0)
+							)/(double)seqr->number_of_channels,++j;
 }
 
 void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
@@ -134,7 +135,7 @@ void seqr_drawnotes(seqr_data*seqr,ui_data*ui)
 			int hilite=hilite_i&&ui->channel==j;
 			int x_pos=j*chan_width;
 			// Get first Msg of current pattern
-			Msg*m=seqr_getmsgat(seqr,ui,ui->pattern,j,i);
+			Msg*m=seqr_getmsgat(seqr,ui->pattern,j,i);
 
 			// We need to sort of 'disassemble' the message queue here
 			if(hilite)attron(COLOR_PAIR(C_HILITE));
@@ -192,7 +193,7 @@ void seqr_drawui(seqr_data*seqr,ui_data*ui)
 	attron(COLOR_PAIR(C_CYAN));
 	char*chan_name[]={" (sine)"," (square)"," (triangle)"," (saw)"};
 	mvprintw(y_pos++,1,"Channel:%u%s\n",ui->channel,chan_name[ui->channel]);
-	mvprintw(y_pos++,1,"Pattern: %d",ui->pattern);
+	mvprintw(y_pos++,1,"Pattern: %d/%d",ui->pattern,seqr->number_of_patterns);
 	attroff(COLOR_PAIR(C_CYAN));
 
 	attron(COLOR_PAIR(C_WHITE));
@@ -217,6 +218,9 @@ void seqr_edit_file(seqr_data*seqr,char*fn)
 		sprintf(seqr->info,"Failed to open \"%s\"",fn);
 	else
 	{
+		fread(&seqr->number_of_patterns,sizeof(int),1,f);
+		fread(&seqr->number_of_channels,sizeof(int),1,f);
+		fread(&seqr->notes_per_pattern,sizeof(int),1,f);
 		fread(seqr->seq,sizeof(Msg)*seqr->number_of_patterns*seqr->notes_per_pattern*seqr->number_of_channels,1,f);
 		sprintf(seqr->info,"Opened \"%s\"",fn);
 		fclose(f);
@@ -227,6 +231,9 @@ void seqr_write_file(seqr_data*seqr,char*fn)
 {
 	FILE *f=fopen(fn,"wb");
 	if(!f)return;
+	fwrite(&seqr->number_of_patterns,sizeof(int),1,f);
+	fwrite(&seqr->number_of_channels,sizeof(int),1,f);
+	fwrite(&seqr->notes_per_pattern,sizeof(int),1,f);
 	fwrite(seqr->seq,sizeof(Msg)*seqr->number_of_patterns*seqr->notes_per_pattern*seqr->number_of_channels,1,f);
 	sprintf(seqr->info,"Wrote \"%s\"",fn);
 	fclose(f);
@@ -290,7 +297,7 @@ char*seqr_getnotename(int midi_key)
 	return name;
 }
 
-Msg*seqr_getmsgat(seqr_data*seqr,ui_data*ui,int pat,int chan,int note)
+Msg*seqr_getmsgat(seqr_data*seqr,int pat,int chan,int note)
 {
 	return &seqr->seq[
 		pat*seqr->number_of_channels*seqr->notes_per_pattern+

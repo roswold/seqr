@@ -8,6 +8,8 @@
 #	include<ncurses.h>
 #endif
 
+void*nilthread(void*d){return NULL;}
+
 // Entry
 int main(int argc,char**argv)
 {
@@ -27,7 +29,7 @@ int main(int argc,char**argv)
 	seqr=seqr_create();
 	signal(SIGINT,sighandler);
 	pthread_create(&seqr->play_thread,NULL,
-			seqr_audio_thread_cb,seqr); // Create thread so we can join it
+			nilthread,seqr); // Create thread so we can join it
 
 	// Main loop
 	while(ui->running)

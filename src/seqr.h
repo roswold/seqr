@@ -132,4 +132,4 @@ char*seqr_getnotename(int midi_key);
 Msg*seqr_getcurmsg(seqr_data*seqr,ui_data*ui);
 
 // Get note (Msg) at specified offset
-Msg*seqr_getmsgat(seqr_data*seqr,ui_data*ui,int pat,int chan,int note);
+Msg*seqr_getmsgat(seqr_data*seqr,int pat,int chan,int note);
