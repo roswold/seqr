@@ -52,3 +52,14 @@ int list_length(node*head)
 	}
 	return len;
 }
+
+void list_delete(node*head)
+{
+	node*t;
+	while(head)
+	{
+		t=head->next;
+		free(head);
+		head=t;
+	}
+}

@@ -22,3 +22,6 @@ void list_print_note(node*head,char**notes);
 
 // Traverse list, return length in nodes
 int list_length(node*head);
+
+// Delete/free list nodes
+void list_delete(node*head);

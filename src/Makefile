@@ -1,6 +1,6 @@
 CFLAGS=		$(shell pkg-config --cflags libxml-2.0 portaudio-2.0 ncurses libxml-2.0) -Wfatal-errors
 LDFLAGS=	$(shell pkg-config --libs portaudio-2.0 ncurses libxml-2.0) -lm -lpthread -pthread
-OBJS= main.o seqr.o ui.o list.o song.o wav.o
+OBJS= main.o seqr.o ui.o vect.o song.o wav.o
 
 # OS Specific
 ifeq ($(OS),Windows_NT)

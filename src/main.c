@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include"seqr.h"
+#include"list.h"
 #include"ui.h"
 
 #if defined(_WIN32) || defined(__CYGWIN__)
